@@ -57,7 +57,11 @@ public class JvnCoordImpl
   * @param js  : the remote reference of the JVNServer
   * @throws java.rmi.RemoteException,JvnException
   **/
-  
+  @Override
+  public void jvnRegisterObject(String jon, JvnObject jo, JvnRemoteServer js) throws RemoteException, JvnException {
+      // TODO Auto-generated method stub
+      throw new UnsupportedOperationException("Unimplemented method 'jvnRegisterObject'");
+  }
   /**
   * Get the reference of a JVN object managed by a given JVN server 
   * @param jon : the JVN object name
@@ -106,11 +110,7 @@ public class JvnCoordImpl
 	 // to be completed
     }
 
-  @Override
-  public void jvnRegisterObject(String jon, JvnObject jo, JvnRemoteServer js) throws RemoteException, JvnException {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'jvnRegisterObject'");
-  }
+
 }
 
  
