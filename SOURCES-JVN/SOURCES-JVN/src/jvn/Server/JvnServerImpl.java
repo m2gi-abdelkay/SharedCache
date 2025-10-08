@@ -20,14 +20,7 @@ import jvn.Coordinator.JvnCoordImpl;
 import java.io.*;
 import java.util.HashMap;
 
-enum LockStatus {
-	NL,
-	RC,
-	WC,
-	R,
-	W,
-	RWC
-}
+
 
 public class JvnServerImpl 	
               extends UnicastRemoteObject 
@@ -39,28 +32,22 @@ public class JvnServerImpl
 	private static final long serialVersionUID = 1L;
 	// A JVN server is managed as a singleton  
 	private static JvnServerImpl js = null;
-	private static JvnCoordImpl() javanaise = null;
-	private Map<Integer, JvnObject> idToObjMap = new HashMap<>();
-	private Map<Integer, LockStatus> lockMap = new HashMap<>();
+	private JvnRemoteCoord javanaiseCoord;
+	private Map<Integer, JvnObject> objCache;
+
 
   /**
   * Default constructor
   * @throws JvnException
   **/
 	private JvnServerImpl() throws Exception {
-		// super();
-		// to be completed
-		if (js == null){
-			try {
-				js = new JvnServerImpl();
-				Registry registry = LocateRegistry.getRegistry();
-				javanaise = (JvnCoordImpl) registry.lookup("Javanaise");
-			} catch (Exception e){
-				return null;
-			}
+		super();
 
-		}
-		return js;
+		Registry registry = LocateRegistry.getRegistry();
+		javanaiseCoord = (JvnCoordImpl) registry.lookup("Javanaise"); // add name later attribute in coord
+
+		this.objCache = new HashMap<>();
+
 	}
 	
   /**
@@ -87,10 +74,7 @@ public class JvnServerImpl
 	throws jvn.Utils.JvnException {
     // to be completed
 		try{
-			idToObjMap.clear();
-			lockMap.clear();
-			javanaise = null;
-			js = null;
+			javanaiseCoord.jvnTerminate(this);
 		} catch (Exception e){
 			System.err.println(e.message);
 		}
@@ -104,14 +88,13 @@ public class JvnServerImpl
 	**/
 	public  JvnObject jvnCreateObject(Serializable o)
 	throws jvn.Utils.JvnException { 
-		// to be completed
 
-		jo = (JvnObject) o;
-		int oid = javanaise.jvnGetObjectId();
-		idToObjMap.put(oid, jo);
-		// jo.jvnSetObjectId();
-		lockMap.put(oid, LockStatus.WriteLock);
-		return jo;
+		try {
+			int oid = javanaiseCoord.jvnGetObjectId();
+			return new MyObject(o, oid);
+		} catch (RemoteException e) {
+			System.err.println(e.message);
+		}
 	}
 	
 	/**
@@ -122,8 +105,13 @@ public class JvnServerImpl
 	**/
 	public  void jvnRegisterObject(String jon, JvnObject jo)
 	throws jvn.Utils.JvnException {
-		javanaise.jvnRegisterObject(jon, jo, this);
-		// to be completed 
+		this.objCache.put(jo.jvnGetObjectId(), jo);
+
+		try {
+			javanaiseCoord.jvnRegisterObject(jon, jo, this);
+		} catch (RemoteException e) {
+			System.err.println(e.message);
+		}
 	}
 	
 	/**
@@ -134,8 +122,17 @@ public class JvnServerImpl
 	**/
 	public  JvnObject jvnLookupObject(String jon)
 	throws jvn.Utils.JvnException {
-		JvnObject jo = javanaise.jvnLookupObject(jon, this);
-		return jo;
+		try {
+			JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
+			if (jo != null) {
+				this.objCache.put(jo.jvnGetObjectId(), jo);
+			}
+			return jo;
+
+		} catch (RemoteException e) {
+			System.err.println(e.message);
+		}
+
     // to be completed 
 	//	return null;
 	}	
@@ -148,10 +145,12 @@ public class JvnServerImpl
 	**/
    public Serializable jvnLockRead(int joi)
 	 throws JvnException {
-	   Serializable lastState = javanaise.jvnLockRead(joi, this);
-	   lockMap.put(joi, LockStatus.R);
-	   idToObjMap.put(joi, (JvnObject) lastState);
-	   return lastState;
+	   try {
+		   Serializable state = javanaiseCoord.jvnLockRead(joi, this);
+		   return state;
+	   } catch (RemoteException e) {
+		   System.err.println(e.message);
+	   }
 		// to be completed 
 		// return null;
 
@@ -164,10 +163,12 @@ public class JvnServerImpl
 	**/
    public Serializable jvnLockWrite(int joi)
 	 throws JvnException {
-	   Serializable lastState = javanaise.jvnLockWrite(joi, this);
-	   lockMap.put(joi, LockStatus.W);
-	   idToObjMap.put(joi, (JvnObject) lastState);
-	   return lastState;
+	   try {
+		   Serializable state = javanaiseCoord.jvnLockWrite(joi, this);
+		   return state;
+	   } catch (RemoteException e) {
+		   System.err.println(e.message);
+	   }
 		// to be completed 
 		// return null;
 	}	
@@ -183,12 +184,8 @@ public class JvnServerImpl
   public void jvnInvalidateReader(int joi)
 	throws java.rmi.RemoteException,jvn.Utils.JvnException {
 		// to be completed
-		JvnObject jo = idToObjMap.get(joi);
-		jo.jvnInvalidateReader();
-		lockMap.put(joi, LockStatus.NL);
-		return;
+		this.objCache.get(joi).jvnInvalidateReader();
 	  }
-	};
 	    
 	/**
 	* Invalidate the Write lock of the JVN object identified by id 
@@ -199,11 +196,7 @@ public class JvnServerImpl
   public Serializable jvnInvalidateWriter(int joi)
 	throws java.rmi.RemoteException,jvn.Utils.JvnException { 
 		// to be completed
-	  	JvnObject jo = idToObjMap.get(joi); // get object ref
-		jo = jo.jvnInvalidateWriter(); // wait for last value after write
-		idToObjMap.put(joi, jo); // update locally
-	  	lockMap.put(joi, LockStatus.NL); // remove lock
-		return jo; // return updated object
+	  	return this.objCache.get(joi).jvnInvalidateWriter();
 	};
 	
 	/**
@@ -215,11 +208,7 @@ public class JvnServerImpl
    public Serializable jvnInvalidateWriterForReader(int joi)
 	 throws java.rmi.RemoteException,jvn.Utils.JvnException { 
 		// to be completed
-		JvnObject jo = idToObjMap.get(joi); // get object ref
-		jo = jo.jvnInvalidateWriterForReader(); // get last value after write
-		idToObjMap.put(joi, jo); // update locally
-		lockMap.put(joi, LockStatus.RC) // reduce lock to read
-		return jo; // return updated object
+		return this.objCache.get(joi).jvnInvalidateWriterForReader();
 
 	 };
 
