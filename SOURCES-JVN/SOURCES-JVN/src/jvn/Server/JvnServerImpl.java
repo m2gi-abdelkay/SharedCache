@@ -91,7 +91,7 @@ public class JvnServerImpl
 
 		try {
 			int oid = javanaiseCoord.jvnGetObjectId();
-			return new MyObject(o, oid);
+			return new JvnObjectImpl(o, oid);
 		} catch (RemoteException e) {
 			System.err.println(e.message);
 		}
