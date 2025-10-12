@@ -214,6 +214,19 @@ public class JvnServerImpl
 
 	 };
 
+	@Override
+public boolean equals(Object obj) {
+    if (this == obj) {
+        return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+        return false;
+    }
+    JvnServerImpl other = (JvnServerImpl) obj;
+    // Add comparison logic for fields if necessary
+    return true; // Adjust based on fields to compare
+}
+
 }
 
  
