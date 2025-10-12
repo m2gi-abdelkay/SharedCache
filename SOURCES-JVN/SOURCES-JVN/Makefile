@@ -37,7 +37,7 @@ clean:
 # Start RMI Registry
 start-registry:
 	@echo "Starting RMI Registry on port $(RMIREGISTRY_PORT)..."
-	@cd bin && rmiregistry $(RMIREGISTRY_PORT) &
+	@rmiregistry $(RMIREGISTRY_PORT) &
 	@echo "RMI Registry started"
 
 # Stop RMI Registry
