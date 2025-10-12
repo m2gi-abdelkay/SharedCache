@@ -97,7 +97,7 @@ public class JvnCoordImpl
   throws java.rmi.RemoteException,jvn.Utils.JvnException{
     if(!registrationMap.containsKey(jon))
     {
-      return null;
+      throw new JvnException("Object not found!");
     }
     return registrationMap.get(jon);
   }

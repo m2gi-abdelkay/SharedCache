@@ -18,7 +18,13 @@ import jvn.Utils.JvnRemoteServer;
 import jvn.Coordinator.JvnCoordImpl;
 
 import java.io.*;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.HashMap;
+import java.util.Map;
+import jvn.Utils.JvnObjectImpl;
+import jvn.Utils.JvnRemoteCoord;
 
 
 
@@ -32,7 +38,7 @@ public class JvnServerImpl
 	private static final long serialVersionUID = 1L;
 	// A JVN server is managed as a singleton  
 	private static JvnServerImpl js = null;
-	private JvnRemoteCoord javanaiseCoord;
+	private final JvnRemoteCoord javanaiseCoord;
 	private Map<Integer, JvnObject> objCache;
 
 
@@ -70,15 +76,17 @@ public class JvnServerImpl
 	* The JVN service is not used anymore
 	* @throws JvnException
 	**/
+	@Override
 	public  void jvnTerminate()
 	throws jvn.Utils.JvnException {
     // to be completed
 		try{
 			javanaiseCoord.jvnTerminate(this);
-		} catch (Exception e){
-			System.err.println(e.message);
-		}
-		return;
+		} catch (JvnException e){
+			System.err.println(e.getMessage());
+		} catch (RemoteException ex) {
+			System.out.println("Erreuir in remote exception in jvnTerminate");
+            }
 	} 
 	
 	/**
@@ -86,14 +94,14 @@ public class JvnServerImpl
 	* @param o : the JVN object state
 	* @throws JvnException
 	**/
+        @Override
 	public  JvnObject jvnCreateObject(Serializable o)
 	throws jvn.Utils.JvnException { 
-
 		try {
 			int oid = javanaiseCoord.jvnGetObjectId();
 			return new JvnObjectImpl(o, oid);
 		} catch (RemoteException e) {
-			System.err.println(e.message);
+			throw new JvnException("Failed to create object due to remote exception");
 		}
 	}
 	
@@ -103,6 +111,7 @@ public class JvnServerImpl
 	* @param jo : the JVN object 
 	* @throws JvnException
 	**/
+        @Override
 	public  void jvnRegisterObject(String jon, JvnObject jo)
 	throws jvn.Utils.JvnException {
 		this.objCache.put(jo.jvnGetObjectId(), jo);
@@ -110,8 +119,13 @@ public class JvnServerImpl
 		try {
 			javanaiseCoord.jvnRegisterObject(jon, jo, this);
 		} catch (RemoteException e) {
-			System.err.println(e.message);
+			System.out.println("Caught remite exception");
 		}
+		catch (JvnException e)
+		{
+			System.out.println("Caught error in registration!");
+		}
+		
 	}
 	
 	/**
@@ -120,17 +134,21 @@ public class JvnServerImpl
 	* @return the JVN object 
 	* @throws JvnException
 	**/
+	@Override
 	public  JvnObject jvnLookupObject(String jon)
 	throws jvn.Utils.JvnException {
 		try {
 			JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
-			if (jo != null) {
-				this.objCache.put(jo.jvnGetObjectId(), jo);
-			}
+			this.objCache.put(jo.jvnGetObjectId(), jo);
 			return jo;
-
 		} catch (RemoteException e) {
-			System.err.println(e.message);
+			System.err.println("remote exception caught");
+			return null;
+		}
+		catch (JvnException e)
+		{
+			System.err.println(e.getMessage());
+			return null;
 		}
 
     // to be completed 
@@ -143,13 +161,15 @@ public class JvnServerImpl
 	* @return the current JVN object state
 	* @throws  JvnException
 	**/
+	@Override
    public Serializable jvnLockRead(int joi)
 	 throws JvnException {
 	   try {
 		   Serializable state = javanaiseCoord.jvnLockRead(joi, this);
 		   return state;
 	   } catch (RemoteException e) {
-		   System.err.println(e.message);
+		   System.err.println("Remote exception erreur caught");
+		   return null;
 	   }
 		// to be completed 
 		// return null;
@@ -161,13 +181,15 @@ public class JvnServerImpl
 	* @return the current JVN object state
 	* @throws  JvnException
 	**/
+	@Override
    public Serializable jvnLockWrite(int joi)
 	 throws JvnException {
 	   try {
 		   Serializable state = javanaiseCoord.jvnLockWrite(joi, this);
 		   return state;
 	   } catch (RemoteException e) {
-		   System.err.println(e.message);
+		   System.err.println("Remote exception erreur caught");
+		   return null;
 	   }
 		// to be completed 
 		// return null;
@@ -181,6 +203,7 @@ public class JvnServerImpl
 	* @return void
 	* @throws java.rmi.RemoteException,JvnException
 	**/
+	@Override
   public void jvnInvalidateReader(int joi)
 	throws java.rmi.RemoteException,jvn.Utils.JvnException {
 		// to be completed
