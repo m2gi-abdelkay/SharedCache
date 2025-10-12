@@ -42,14 +42,11 @@ public class JvnCoordImpl
   private ConcurrentHashMap<Integer, Object> objectLocks;
 	
 
-<<<<<<< HEAD
-=======
 
 
   /**
 	 * 
 	 */
->>>>>>> shayan
 	private static final long serialVersionUID = 1L;
 
   private int objectIdCounter;
@@ -67,40 +64,12 @@ public class JvnCoordImpl
   * Default constructor
   * @throws JvnException
   **/
-<<<<<<< HEAD
-	private JvnCoordImpl() throws Exception {
-    super();
-		try {
-      try {
-          
-        LocateRegistry.createRegistry(1099); //default port
-        System.out.println("RMI registry created at port 1099.");
-      } catch (ExportException ee) {
-          
-        System.out.println("Registry RMI already exists.");
-      }
-      Registry registry = LocateRegistry.getRegistry();
-      registry.rebind("Javanaise", this);
-      System.out.println("JvnCoord bound in registry.");
-    } catch (RemoteException re) {
-        System.err.println(re.getMessage());
-        throw re;
-    }
-    this.objectIdCounter = 0;
-    this.nameToId = new HashMap<>();
-    this.idToObject = new HashMap<>();
-    this.readers = new HashMap<>();
-    this.writers = new HashMap<>();
-
-
-=======
 	JvnCoordImpl() throws Exception {
 		registrationMap = new ConcurrentHashMap<>();
     lockHashMap = new ConcurrentHashMap<>();
     serverHashMap = new ConcurrentHashMap<>();
     objectIdsMap = new ConcurrentHashMap<>();
     objectLocks = new ConcurrentHashMap<>();
->>>>>>> shayan
 	}
 
   /**
@@ -111,14 +80,8 @@ public class JvnCoordImpl
   @Override
   public synchronized int jvnGetObjectId()
   throws java.rmi.RemoteException,jvn.Utils.JvnException {
-<<<<<<< HEAD
-    objectIdCounter++;
-    System.out.println("New object ID allocated: " + objectIdCounter);
-    return objectIdCounter;
-=======
     start_id++;
     return start_id;
->>>>>>> shayan
   }
   
   /**
@@ -150,32 +113,11 @@ public class JvnCoordImpl
   @Override
   public JvnObject jvnLookupObject(String jon, JvnRemoteServer js)
   throws java.rmi.RemoteException,jvn.Utils.JvnException{
-<<<<<<< HEAD
-    
-    //check if the object exists
-    Integer oid = nameToId.get(jon);
-    if (oid == null) {
-        System.out.println("[Coordinator] Lookup: " + jon + " not found.");
-        return null;
-    }
-    //recover the object
-    JvnObject jo = idToObject.get(oid);
-    if (jo == null) {
-        throw new jvn.Utils.JvnException("Inconsistent state: ID " + oid + " not found for object " + jon);
-    }
-    //add the server to the readers list
-    readers.computeIfAbsent(oid, k -> new HashSet<>()).add(js);
-
-    System.out.println("[Coordinator] Lookup: " + jon + " found (ID = " + oid + "), reader added.");
-
-    return jo;
-=======
     if(!registrationMap.containsKey(jon))
     {
       return null;
     }
     return registrationMap.get(jon);
->>>>>>> shayan
   }
   
   /**
@@ -188,40 +130,6 @@ public class JvnCoordImpl
   @Override
    public Serializable jvnLockRead(int joi, JvnRemoteServer js)
    throws java.rmi.RemoteException, JvnException{
-<<<<<<< HEAD
-    
-     JvnObject jo = idToObject.get(joi);
-    if (jo == null) {
-        throw new jvn.Utils.JvnException("Object with ID " + joi + " not found.");
-    }
-
-    JvnRemoteServer writer = writers.get(joi);
-    Serializable updatedState = null;
-
-
-    if (writer != null) {
-        try {
-            //invalidate the writer and get the updated state
-            updatedState = writer.jvnInvalidateWriterForReader(joi);
-        } catch (Exception e) {
-            System.err.println(" Writer invalidation failed");
-        }
-        // Remove the writer from the map
-        writers.remove(joi);
-
-        
-        if (updatedState != null) {
-            jo.setSerializableObject(updatedState);
-        }
-    }
-
-    readers.computeIfAbsent(joi, k -> new HashSet<>()).add(js);
-
-    System.out.println("[Coordinator] Read lock granted for object " + joi);
-
-    return jo.getSerializableObject();
-    
-=======
 
     // Get or create a lock object for this specific joi to enable fine-grained synchronization
     Object lockObject = objectLocks.computeIfAbsent(joi, k -> new Object());
@@ -302,7 +210,6 @@ public class JvnCoordImpl
       //Should never happen
       return null;
     }
->>>>>>> shayan
    }
 
   /**
@@ -402,30 +309,6 @@ public class JvnCoordImpl
   @Override
     public void jvnTerminate(JvnRemoteServer js)
 	 throws java.rmi.RemoteException, JvnException {
-<<<<<<< HEAD
-
-    System.out.println("Termination requested by a server.");
-
-    for (Map.Entry<Integer, Set<JvnRemoteServer>> entry : readers.entrySet()) {
-        Set<JvnRemoteServer> serverSet = entry.getValue();
-        if (serverSet.contains(js)) {
-            serverSet.remove(js);
-            System.out.println("[Coordinator] Removed server from readers of object " + entry.getKey());
-        }
-    }
-
-  
-    for (Map.Entry<Integer, JvnRemoteServer> entry : writers.entrySet()) {
-        Integer joi = entry.getKey();
-        JvnRemoteServer writer = entry.getValue();
-        if (writer.equals(js)) {
-            writers.remove(joi);
-            System.out.println("[Coordinator] Removed server from writers of object " + joi);
-        }
-    }
-
-    System.out.println("Server terminated successfully.");
-=======
     //The server (js) is terminating. This means:
     // - On all the joi's, must find the joi's where this server has a lock on and remove it from that list
     // - If the server is the only one that has a lock on an object, mark the object as unlocked (remove it from the locked hash map and server hash map)
@@ -464,7 +347,6 @@ public class JvnCoordImpl
       }
     }
         
->>>>>>> shayan
     }
 
   
