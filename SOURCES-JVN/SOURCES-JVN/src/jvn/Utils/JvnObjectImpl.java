@@ -1,25 +1,18 @@
 
-package jvn.Utils; 
 
 import java.io.Serializable;
+import jvn.Server.JvnServerImpl;
+import jvn.Utils.JvnException;
+import jvn.Utils.JvnObject;
+import jvn.Utils.JvnSTATES;
 
-public enum JvnSTATES {
-		NL,
-		R,
-		W,
-		RC,
-		WC,
-		RWC
-	}
+
 
 public class JvnObjectImpl implements JvnObject{
     private Serializable obj; 
     private int id;
-    private JvnSTATES state;
-
     public String name;
-
-
+    private JvnSTATES state;
 
     public JvnObjectImpl(Serializable o, int id){
         this.obj = o;
@@ -43,39 +36,43 @@ public class JvnObjectImpl implements JvnObject{
     private void customWait() {
         try {
             System.out.println("Waiting...");
-            wait();
+            this.wait();
         } catch (InterruptedException e){
-            System.err.println(e.message);
+            System.err.println(e.getMessage());
         }
     }
 
     private void customNotify() {
         System.out.println("Notifying...");
-        notify();
+        this.notify();
     }
 
     @Override
     public synchronized void jvnLockRead() throws JvnException{
+
         switch (state){
-            case JvnSTATES.RC:
+            case RC:
                 state = JvnSTATES.R;
                 break;
-            case JvnSTATES.WC:
+            case WC:
                 state = JvnSTATES.RWC;
                 break;
-            case JvnSTATES.W:
-                state = JvnSTATES.R;
+            case R:
+            case RWC:
+            case W:
+                // already have the lock
                 break;
             default:
-                obj = JvnServerImpl.jvnGetServer().jvnLockRead(jvnGetObjectId());
-                state = JvnSTATES.R;
+            obj = JvnServerImpl.jvnGetServer().jvnLockRead(jvnGetObjectId());
+            state = JvnSTATES.R;
         }
+        System.out.println("[JVN Object " + id + "] State changed to " + state);
     }
 
 
     @Override
-    public synchronized void jvnLockWrite() throws JvnException{
-        if (state != JvnSTATES.WC) {
+    public synchronized void jvnLockWrite() throws JvnException {
+        if (state != JvnSTATES.WC && state != JvnSTATES.W) {
             obj = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnGetObjectId());
         }
         state = JvnSTATES.W;
@@ -85,13 +82,13 @@ public class JvnObjectImpl implements JvnObject{
     @Override
     public synchronized void jvnUnLock() throws JvnException{
         switch(state) {
-            case JvnSTATES.W :
+            case W :
                 state = JvnSTATES.WC;
                 break;
-            case JvnSTATES.R:
+            case R:
                 state = JvnSTATES.RC;
                 break;
-            case JvnSTATES.RWC:
+            case RWC:
                 state = JvnSTATES.WC;
                 break;
         }
@@ -104,12 +101,12 @@ public class JvnObjectImpl implements JvnObject{
     @Override
     public synchronized void jvnInvalidateReader() throws JvnException{
         switch (state){
-            case JvnSTATES.R:
-                customWait();
+            case R:
+                this.customWait();
                 // wait function to be implemented and called here
                 state = JvnSTATES.NL;
                 break;
-            case JvnSTATES.RC:
+            case RC:
                 state = JvnSTATES.NL;
                 break;
             default:
@@ -121,15 +118,15 @@ public class JvnObjectImpl implements JvnObject{
     @Override
     public synchronized Serializable jvnInvalidateWriter() throws JvnException{
         switch (state){
-            case JvnSTATES.RWC:
+            case RWC:
                 customWait();
                 state = JvnSTATES.NL;
                 break;
-            case JvnSTATES.W:
+            case W:
                 customWait();
                 state = JvnSTATES.NL;
                 break;
-            case JvnSTATES.WC:
+            case WC:
                 state = JvnSTATES.NL;
                 break;
             default:
@@ -142,14 +139,14 @@ public class JvnObjectImpl implements JvnObject{
     @Override 
     public synchronized Serializable jvnInvalidateWriterForReader() throws JvnException{
         switch (state) {
-            case JvnSTATES.RWC:
+            case RWC:
                 customWait();
                 state = JvnSTATES.RC;
                 break;
-            case JvnSTATES.WC:
+            case WC:
                 state = JvnSTATES.RC;
                 break;
-            case JvnSTATES.W:
+            case W:
                 customWait();
                 state = JvnSTATES.RC;
                 break;
@@ -159,8 +156,5 @@ public class JvnObjectImpl implements JvnObject{
 
         return obj;
     } 
-
-
-
 
 }
