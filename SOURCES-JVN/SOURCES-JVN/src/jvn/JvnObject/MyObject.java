@@ -1,4 +1,4 @@
-package jvn.JvnObjectImpl;
+package jvn.JvnObject;
 
 import java.io.Serializable;
 

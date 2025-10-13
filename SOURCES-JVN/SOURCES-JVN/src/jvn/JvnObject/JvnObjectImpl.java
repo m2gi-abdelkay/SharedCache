@@ -1,16 +1,19 @@
 
-package jvn.Utils; 
+package jvn.JvnObject; 
 
 import java.io.Serializable;
+import jvn.Server.JvnServerImpl;
+import jvn.Utils.JvnException;
+import jvn.Utils.JvnObject;
 
-public enum JvnSTATES {
-		NL,
-		R,
-		W,
-		RC,
-		WC,
-		RWC
-	}
+enum JvnSTATES {
+        NL,
+        R,
+        W,
+        RC,
+        WC,
+        RWC
+    }
 
 public class JvnObjectImpl implements JvnObject{
     private Serializable obj; 
@@ -43,27 +46,31 @@ public class JvnObjectImpl implements JvnObject{
     private void customWait() {
         try {
             System.out.println("Waiting...");
-            wait();
+            synchronized (this) {
+                wait();
+            }
         } catch (InterruptedException e){
-            System.err.println(e.message);
+            System.err.println("exception caught");
         }
     }
 
     private void customNotify() {
         System.out.println("Notifying...");
-        notify();
+        synchronized (this) {
+            notify();
+        }
     }
 
     @Override
     public synchronized void jvnLockRead() throws JvnException{
         switch (state){
-            case JvnSTATES.RC:
+            case RC:
                 state = JvnSTATES.R;
                 break;
-            case JvnSTATES.WC:
+            case WC:
                 state = JvnSTATES.RWC;
                 break;
-            case JvnSTATES.W:
+            case W:
                 state = JvnSTATES.R;
                 break;
             default:
@@ -85,13 +92,13 @@ public class JvnObjectImpl implements JvnObject{
     @Override
     public synchronized void jvnUnLock() throws JvnException{
         switch(state) {
-            case JvnSTATES.W :
+            case W :
                 state = JvnSTATES.WC;
                 break;
-            case JvnSTATES.R:
+            case R:
                 state = JvnSTATES.RC;
                 break;
-            case JvnSTATES.RWC:
+            case RWC:
                 state = JvnSTATES.WC;
                 break;
         }
@@ -104,12 +111,12 @@ public class JvnObjectImpl implements JvnObject{
     @Override
     public synchronized void jvnInvalidateReader() throws JvnException{
         switch (state){
-            case JvnSTATES.R:
+            case R:
                 customWait();
                 // wait function to be implemented and called here
                 state = JvnSTATES.NL;
                 break;
-            case JvnSTATES.RC:
+            case RC:
                 state = JvnSTATES.NL;
                 break;
             default:
@@ -121,15 +128,15 @@ public class JvnObjectImpl implements JvnObject{
     @Override
     public synchronized Serializable jvnInvalidateWriter() throws JvnException{
         switch (state){
-            case JvnSTATES.RWC:
+            case RWC:
                 customWait();
                 state = JvnSTATES.NL;
                 break;
-            case JvnSTATES.W:
+            case W:
                 customWait();
                 state = JvnSTATES.NL;
                 break;
-            case JvnSTATES.WC:
+            case WC:
                 state = JvnSTATES.NL;
                 break;
             default:
@@ -142,19 +149,16 @@ public class JvnObjectImpl implements JvnObject{
     @Override 
     public synchronized Serializable jvnInvalidateWriterForReader() throws JvnException{
         switch (state) {
-            case JvnSTATES.RWC:
+            case RWC -> {
                 customWait();
                 state = JvnSTATES.RC;
-                break;
-            case JvnSTATES.WC:
-                state = JvnSTATES.RC;
-                break;
-            case JvnSTATES.W:
+            }
+            case WC -> state = JvnSTATES.RC;
+            case W -> {
                 customWait();
                 state = JvnSTATES.RC;
-                break;
-            default:
-                System.out.println("InvalidateWriterForReader called on state : " + state);
+            }
+            default -> System.out.println("InvalidateWriterForReader called on state : " + state);
         }
 
         return obj;

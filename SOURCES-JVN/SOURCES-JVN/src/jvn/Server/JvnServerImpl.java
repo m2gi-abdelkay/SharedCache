@@ -9,22 +9,19 @@
 
 package jvn.Server;
 
-import java.rmi.server.UnicastRemoteObject;
-
-import jvn.Utils.JvnException;
-import jvn.Utils.JvnLocalServer;
-import jvn.Utils.JvnObject;
-import jvn.Utils.JvnRemoteServer;
-import jvn.Coordinator.JvnCoordImpl;
-
 import java.io.*;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.util.Map;
-import jvn.Utils.JvnObjectImpl;
+import jvn.JvnObject.JvnObjectImpl;
+import jvn.Utils.JvnException;
+import jvn.Utils.JvnLocalServer;
+import jvn.Utils.JvnObject;
 import jvn.Utils.JvnRemoteCoord;
+import jvn.Utils.JvnRemoteServer;
 
 
 
@@ -50,7 +47,7 @@ public class JvnServerImpl
 		super();
 
 		Registry registry = LocateRegistry.getRegistry();
-		javanaiseCoord = (JvnCoordImpl) registry.lookup("Javanaise"); // add name later attribute in coord
+		javanaiseCoord = (JvnRemoteCoord) registry.lookup("Javanaise"); // add name later attribute in coord
 
 		this.objCache = new HashMap<>();
 
@@ -62,10 +59,12 @@ public class JvnServerImpl
     * @throws JvnException
     **/
 	public static JvnServerImpl jvnGetServer() {
+		System.out.println("Executing this function...");
 		if (js == null){
 			try {
 				js = new JvnServerImpl();
 			} catch (Exception e) {
+				e.printStackTrace();
 				return null;
 			}
 		}

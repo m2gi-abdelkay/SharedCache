@@ -8,14 +8,11 @@
 package irc;
 
 import java.awt.*;
-import java.awt.event.*; 
-
-
+import java.awt.event.*;
+import java.io.*;
 import jvn.Server.JvnServerImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
-
-import java.io.*;
 
 
 public class Irc {
@@ -34,7 +31,7 @@ public class Irc {
 		   
 		// initialize JVN
 		JvnServerImpl js = JvnServerImpl.jvnGetServer();
-		
+		System.out.println("js is :" + js);
 		// look up the IRC object in the JVN server
 		// if not found, create it, and register it in the JVN server
 		JvnObject jo = js.jvnLookupObject("IRC");
@@ -42,7 +39,7 @@ public class Irc {
 		if (jo == null) {
 			jo = js.jvnCreateObject((Serializable) new Sentence());
 			// after creation, I have a write lock on the object
-			jo.jvnUnLock();
+			//jo.jvnUnLock();
 			js.jvnRegisterObject("IRC", jo);
 		}
 		// create the graphical part of the Chat application
