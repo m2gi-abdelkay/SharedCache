@@ -63,7 +63,7 @@ public class JvnCoordImpl
   public synchronized int jvnGetObjectId()
   throws java.rmi.RemoteException,jvn.Utils.JvnException {
     start_id++;
-    System.out.println("Will assign Id :" + start_id + "to new object");
+    System.out.println("Will assign Id :" + start_id + " to new object");
     return start_id;
   }
   
@@ -84,7 +84,7 @@ public class JvnCoordImpl
       throw new JvnException("Object name is already assigned to an object, please change object name.");
     }
 
-    System.out.println("About to register object :" + jon + "with id:" + jo.jvnGetObjectId());
+    System.out.println("About to register object :" + jon + " with id:" + jo.jvnGetObjectId());
     objectIdsMap.put(jo.jvnGetObjectId(), jo);
     registrationMap.put(jon, jo);
   }
@@ -100,10 +100,10 @@ public class JvnCoordImpl
   throws java.rmi.RemoteException,jvn.Utils.JvnException{
     if(!registrationMap.containsKey(jon))
     {
-      System.out.println("Object: " + jon + "NOT FOUND!");
+      System.out.println("Object: " + jon + " NOT FOUND!");
       throw new JvnException("Object not found!");
     }
-    System.out.println("Object :" + jon + "FOUND!");
+    System.out.println("Object :" + jon + " FOUND!");
     return registrationMap.get(jon);
   }
   
@@ -119,7 +119,7 @@ public class JvnCoordImpl
    throws java.rmi.RemoteException, JvnException{
 
     // Get or create a lock object for this specific joi to enable fine-grained synchronization
-    System.out.println("Attempting to acquire a read lock for object :" + joi + "by server :"+ js);
+    System.out.println("Attempting to acquire a read lock for object :" + joi + " by server :"+ js);
     Object lockObject = objectLocks.computeIfAbsent(joi, k -> new Object());
     
     synchronized(lockObject) {
@@ -141,20 +141,20 @@ public class JvnCoordImpl
 
       if(lockHashMap.containsKey(joi))
       {
-        System.out.println("Object with id :" + joi + "already has a lock assigned to it. Determining type of lock...");
+        System.out.println("Object with id :" + joi + " already has a lock assigned to it. Determining type of lock...");
         //This means that a/many server(s) has/have a lock on our shared object. We retrieve the list of servers and the type of the lock:
         int lock_type = lockHashMap.get(joi);
         HashSet<JvnRemoteServer> serverArray = serverHashMap.get(joi);
         //Determine type of lock:
         if(lock_type == LOCK_READ)
         {
-          System.out.println("Object with id :" + joi + "has a READ lock assigned to it.");
+          System.out.println("Object with id :" + joi + " has a READ lock assigned to it.");
           // This means that one (or many) servers have a read lock on the object
           //Check whether we have one server in our list and it's the same server asking for the lock (cf cohérence cas de figure 4)
           System.out.println("Checking who has the lock...");
           if(serverArray.size() == 1 && serverArray.contains(js))
           {
-            System.out.println("Server :" + js + "is requesting a READ lock even though it already has one. Returning the object as it is.");
+            System.out.println("Server :" + js + " is requesting a READ lock even though it already has one. Returning the object as it is.");
             //then in this case we simply return the object
             return objectIdsMap.get(joi);
           }
@@ -169,7 +169,7 @@ public class JvnCoordImpl
 
         }
         if(lock_type == LOCK_WRITE){
-          System.out.println("Object with id :" + joi + "has a WRITE lock assigned to it.");
+          System.out.println("Object with id :" + joi + " has a WRITE lock assigned to it.");
           System.out.println("Checking whether it is the same server....");
 
           //The lock type that we have is a WRITE LOCK
@@ -178,7 +178,7 @@ public class JvnCoordImpl
           //(since we only have one write lock, the serverArray list should always be 1)
           if(serverArray.contains(js))
           {
-            System.out.println("Server :" + js + "is requesting a READ lock even though it has a WRITE (greedy ass) lock. Returning object as it is.");
+            System.out.println("Server :" + js + " is requesting a READ lock even though it has a WRITE (greedy ass) lock. Returning object as it is.");
             //Then do nothing (an update is required at the JvnObjectLevel, see cas de cohérence figure 5)
             return objectIdsMap.get(joi);
           }
@@ -229,7 +229,7 @@ public class JvnCoordImpl
    throws java.rmi.RemoteException, JvnException{
     
     // Get or create a lock object for this specific joi to enable fine-grained synchronization
-        System.out.println("Attempting to acquire a write lock for object :" + joi + "by server :"+ js);
+        System.out.println("Attempting to acquire a write lock for object :" + joi + " by server :"+ js);
 
     Object lockObject = objectLocks.computeIfAbsent(joi, k -> new Object());
     
@@ -253,20 +253,20 @@ public class JvnCoordImpl
 
       if(lockHashMap.containsKey(joi))
       {
-        System.out.println("Object with id :" + joi + "already has a lock assigned to it. Determining type of lock...");
+        System.out.println("Object with id :" + joi + " already has a lock assigned to it. Determining type of lock...");
 
         int lock_type = lockHashMap.get(joi);
         HashSet<JvnRemoteServer> serverArray = serverHashMap.get(joi);
         if(lock_type == LOCK_WRITE)
         {
-          System.out.println("Object with id :" + joi + "has a WRITE lock assigned to it.");
+          System.out.println("Object with id :" + joi + " has a WRITE lock assigned to it.");
           System.out.println("Checking whether it is the same server....");
 
           //If another server has a write lock, first
           //Check whether it is the same server as the one that is asking:
           if(serverArray.contains(js))
           {
-            System.out.println("Server: " + js + "is trying to acquire a WRITE lock even though it has one. Return object as it is...");
+            System.out.println("Server: " + js + " is trying to acquire a WRITE lock even though it has one. Return object as it is...");
             //Then in this case, do nothing and wait until someone else asks for the lock:
             return objectIdsMap.get(joi);
           }
@@ -278,7 +278,7 @@ public class JvnCoordImpl
             System.out.println("Invalidating other server...");
             JvnRemoteServer serverWithWLock = serverArray.iterator().next();
             JvnObject updatedObject = (JvnObject) serverWithWLock.jvnInvalidateWriter(joi);
-            System.out.println("Server: " + serverWithWLock + "has been invalidated.");
+            System.out.println("Server: " + serverWithWLock + " has been invalidated.");
             //Store the updated object:
             System.out.println("Received updated object and storing it.");
             objectIdsMap.put(joi, updatedObject);
@@ -297,12 +297,12 @@ public class JvnCoordImpl
         {
           //Here we know that one or many servers have a read lock on the object. (Potentially the server calling itself has a reader lock)
           //In this case, we must invalidate all readers (except potentially yourself)
-          System.out.println("Object with id :" + joi + "has a READ lock assigned to it.");
+          System.out.println("Object with id :" + joi + " has a READ lock assigned to it.");
 
           System.out.println("Must invalidate all other readers. Checking whether the current server is among the servers that have a read lock on the object...");
           if(serverArray.contains(js))
           {
-            System.out.println("Server:" + js + "is among the servers with a read lock. Removing them...");
+            System.out.println("Server:" + js + " is among the servers with a read lock. Removing them...");
             serverArray.remove(js);
           }
           System.out.println("Invalidating all servers with a read lock on object " +joi+"...");
@@ -310,7 +310,7 @@ public class JvnCoordImpl
           {
       
             jvnServer.jvnInvalidateReader(joi);
-            System.out.println("Server : " + jvnServer + "has been invalidated.");
+            System.out.println("Server : " + jvnServer + " has been invalidated.");
             
           }
           //Change lock on object:
