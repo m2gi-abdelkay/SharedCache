@@ -51,8 +51,7 @@ public class JvnCoordImpl
 
   private int objectIdCounter;
 
-
-    private final Map<String, Integer> nameToId;
+    private final Map<String, Integer> nameToId ;
 
     private final Map<Integer, JvnObject> idToObject;
 
