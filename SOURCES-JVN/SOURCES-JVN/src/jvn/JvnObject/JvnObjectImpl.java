@@ -24,10 +24,14 @@ public class JvnObjectImpl implements JvnObject{
 
 
 
-    public JvnObjectImpl(Serializable o, int id){
+    public JvnObjectImpl(Serializable o, int id, String lockMode){
         this.obj = o;
         this.id = id;
-        this.state = JvnSTATES.W;
+        if(lockMode.equals("WRITE"))
+            this.state = JvnSTATES.W;
+        else
+            this.state = JvnSTATES.NL;
+        
     }
 
 
@@ -63,6 +67,7 @@ public class JvnObjectImpl implements JvnObject{
 
     @Override
     public synchronized void jvnLockRead() throws JvnException{
+        System.out.println("Executing jvn Lock read with state :" + state);
         switch (state){
             case RC:
                 state = JvnSTATES.R;

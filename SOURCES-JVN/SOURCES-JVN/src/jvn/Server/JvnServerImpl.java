@@ -62,12 +62,14 @@ public class JvnServerImpl
 		System.out.println("Executing this function...");
 		if (js == null){
 			try {
+				System.out.println("Server is null initially.");
 				js = new JvnServerImpl();
 			} catch (Exception e) {
 				e.printStackTrace();
 				return null;
 			}
 		}
+		System.out.println("Server isn't null.");
 		return js;
 	}
 	
@@ -98,7 +100,8 @@ public class JvnServerImpl
 	throws jvn.Utils.JvnException { 
 		try {
 			int oid = javanaiseCoord.jvnGetObjectId();
-			return new JvnObjectImpl(o, oid);
+			javanaiseCoord.jvnLockWrite(oid, this);
+			return new JvnObjectImpl(o, oid, "WRITE");
 		} catch (RemoteException e) {
 			throw new JvnException("Failed to create object due to remote exception");
 		}
@@ -138,8 +141,9 @@ public class JvnServerImpl
 	throws jvn.Utils.JvnException {
 		try {
 			JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
-			this.objCache.put(jo.jvnGetObjectId(), jo);
-			return jo;
+			JvnObjectImpl localJo = new JvnObjectImpl(jo.jvnGetSharedObject(),jo.jvnGetObjectId(),"");
+			this.objCache.put(localJo.jvnGetObjectId(), localJo);
+			return localJo;
 		} catch (RemoteException e) {
 			System.err.println("remote exception caught");
 			return null;

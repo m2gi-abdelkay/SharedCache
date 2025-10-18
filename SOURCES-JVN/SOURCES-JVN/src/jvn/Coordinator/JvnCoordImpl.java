@@ -28,7 +28,7 @@ public class JvnCoordImpl
   private static final int LOCK_WRITE = 1;
   private static int start_id = 1;
   private ConcurrentHashMap<String,JvnObject> registrationMap;
-  private ConcurrentHashMap<Integer, JvnObject> objectIdsMap;
+  private ConcurrentHashMap<Integer, Serializable> objectIdsMap;
   private ConcurrentHashMap<Integer,Integer> lockHashMap;
   private ConcurrentHashMap<Integer, HashSet<JvnRemoteServer>> serverHashMap;
   // Map to store per-object locks for fine-grained synchronization
@@ -191,7 +191,7 @@ public class JvnCoordImpl
             //Then we must invalidate, get the server which has the lock:
             JvnRemoteServer serverWithWLock = serverArray.iterator().next();
             System.out.println("Invalidating server :" + serverWithWLock);
-            JvnObject updatedObject = (JvnObject) serverWithWLock.jvnInvalidateWriterForReader(joi);
+            Serializable updatedObject = serverWithWLock.jvnInvalidateWriterForReader(joi);
             //Store the updated object:
             System.out.println("Received updated object.");
             objectIdsMap.put(joi, updatedObject);
