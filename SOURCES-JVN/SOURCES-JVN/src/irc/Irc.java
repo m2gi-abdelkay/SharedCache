@@ -56,27 +56,56 @@ public class Irc {
    @param jo the JVN object representing the Chat
    **/
 	public Irc(JvnObject jo) throws JvnException {
+
 		sentence = jo;
 		System.out.println("Object received : " + jo);
 		System.out.println(((Sentence)(sentence.jvnGetSharedObject())).getPrivateMessage());
-		frame=new Frame();
-		frame.setLayout(new GridLayout(1,1));
-		text=new TextArea(10,60);
+
+
+		frame = new Frame("JVN - Distributed IRC");
+		frame.setLayout(new BorderLayout(10, 10));
+		frame.setBackground(new Color(240, 240, 240));
+
+		// main text area
+		text = new TextArea("", 10, 60, TextArea.SCROLLBARS_VERTICAL_ONLY);
 		text.setEditable(false);
 		text.setForeground(Color.red);
-		frame.add(text);
-		data=new TextField(40);
-		frame.add(data);
-		Button read_button = new Button("read");
+		text.setBackground(Color.white);
+		text.setFont(new Font("Consolas", Font.PLAIN, 14));
+		frame.add(text, BorderLayout.CENTER);
+		
+	
+		// Input panel
+		Panel inputPanel = new Panel(new BorderLayout(5, 5));
+		data = new TextField(40);
+		data.setFont(new Font("Consolas", Font.PLAIN, 14));
+		inputPanel.add(data, BorderLayout.CENTER);
+
+		// Buttons panel
+		Panel buttonPanel = new Panel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+		Button read_button = new Button("Read");
+		read_button.setBackground(new Color(200, 230, 255));
+		read_button.setFont(new Font("Arial", Font.BOLD, 13));
 		read_button.addActionListener(new readListener(this));
-		frame.add(read_button);
-		Button write_button = new Button("write");
+
+		Button write_button = new Button("Write");
+		write_button.setBackground(new Color(220, 255, 220));
+		write_button.setFont(new Font("Arial", Font.BOLD, 13));
 		write_button.addActionListener(new writeListener(this));
-		frame.add(write_button);
-		frame.setSize(545,201);
-		text.setBackground(Color.black); 
+
+		buttonPanel.add(read_button);
+		buttonPanel.add(write_button);
+		inputPanel.add(buttonPanel, BorderLayout.EAST);
+
+		frame.add(inputPanel, BorderLayout.SOUTH);
+
+		frame.setSize(600, 300);
+		frame.setLocationRelativeTo(null); // center the frame
 		frame.setVisible(true);
+
 	}
+
+	
 }
 
 

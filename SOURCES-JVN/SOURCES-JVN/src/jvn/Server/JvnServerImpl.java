@@ -22,15 +22,6 @@ import jvn.Utils.JvnLocalServer;
 import jvn.Utils.JvnObject;
 import jvn.Utils.JvnRemoteCoord;
 import jvn.Utils.JvnRemoteServer;
-<<<<<<< HEAD
-import jvn.Coordinator.JvnCoordImpl;
-
-import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.JvnRemoteCoord;
-=======
->>>>>>> 6de5189bb8588da2a0e4301d93bd86c1786c40f7
 
 
 

@@ -18,13 +18,6 @@ import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
 import jvn.Utils.JvnRemoteCoord;
 import jvn.Utils.JvnRemoteServer;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.ExportException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 
 public class JvnCoordImpl 	
@@ -48,16 +41,6 @@ public class JvnCoordImpl
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-
-  private int objectIdCounter;
-
-    private final Map<String, Integer> nameToId ;
-
-    private final Map<Integer, JvnObject> idToObject;
-
-    private final Map<Integer, Set<JvnRemoteServer>> readers;
-
-    private final Map<Integer, JvnRemoteServer> writers;
 
 /**
   * Default constructor
