@@ -9,18 +9,28 @@
 
 package jvn.Server;
 
+import java.io.*;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-
+import java.util.HashMap;
+import java.util.Map;
+import jvn.JvnObject.JvnObjectImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnLocalServer;
 import jvn.Utils.JvnObject;
+import jvn.Utils.JvnRemoteCoord;
 import jvn.Utils.JvnRemoteServer;
+<<<<<<< HEAD
 import jvn.Coordinator.JvnCoordImpl;
 
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.JvnRemoteCoord;
+=======
+>>>>>>> 6de5189bb8588da2a0e4301d93bd86c1786c40f7
 
 
 
@@ -34,7 +44,7 @@ public class JvnServerImpl
 	private static final long serialVersionUID = 1L;
 	// A JVN server is managed as a singleton  
 	private static JvnServerImpl js = null;
-	private JvnRemoteCoord javanaiseCoord;
+	private final JvnRemoteCoord javanaiseCoord;
 	private Map<Integer, JvnObject> objCache;
 
 
@@ -46,7 +56,7 @@ public class JvnServerImpl
 		super();
 
 		Registry registry = LocateRegistry.getRegistry();
-		javanaiseCoord = (JvnCoordImpl) registry.lookup("Javanaise"); // add name later attribute in coord
+		javanaiseCoord = (JvnRemoteCoord) registry.lookup("Javanaise"); // add name later attribute in coord
 
 		this.objCache = new HashMap<>();
 
@@ -58,13 +68,17 @@ public class JvnServerImpl
     * @throws JvnException
     **/
 	public static JvnServerImpl jvnGetServer() {
+		System.out.println("Executing this function...");
 		if (js == null){
 			try {
+				System.out.println("Server is null initially.");
 				js = new JvnServerImpl();
 			} catch (Exception e) {
+				e.printStackTrace();
 				return null;
 			}
 		}
+		System.out.println("Server isn't null.");
 		return js;
 	}
 	
@@ -72,15 +86,17 @@ public class JvnServerImpl
 	* The JVN service is not used anymore
 	* @throws JvnException
 	**/
+	@Override
 	public  void jvnTerminate()
 	throws jvn.Utils.JvnException {
     // to be completed
 		try{
 			javanaiseCoord.jvnTerminate(this);
-		} catch (Exception e){
-			System.err.println(e.message);
-		}
-		return;
+		} catch (JvnException e){
+			System.err.println(e.getMessage());
+		} catch (RemoteException ex) {
+			System.out.println("Erreuir in remote exception in jvnTerminate");
+            }
 	} 
 	
 	/**
@@ -88,14 +104,15 @@ public class JvnServerImpl
 	* @param o : the JVN object state
 	* @throws JvnException
 	**/
+        @Override
 	public  JvnObject jvnCreateObject(Serializable o)
 	throws jvn.Utils.JvnException { 
-
 		try {
 			int oid = javanaiseCoord.jvnGetObjectId();
-			return new JvnObjectImpl(o, oid);
+			javanaiseCoord.jvnLockWrite(oid, this);
+			return new JvnObjectImpl(o, oid, "WRITE");
 		} catch (RemoteException e) {
-			System.err.println(e.message);
+			throw new JvnException("Failed to create object due to remote exception");
 		}
 	}
 	
@@ -105,6 +122,7 @@ public class JvnServerImpl
 	* @param jo : the JVN object 
 	* @throws JvnException
 	**/
+        @Override
 	public  void jvnRegisterObject(String jon, JvnObject jo)
 	throws jvn.Utils.JvnException {
 		this.objCache.put(jo.jvnGetObjectId(), jo);
@@ -112,8 +130,13 @@ public class JvnServerImpl
 		try {
 			javanaiseCoord.jvnRegisterObject(jon, jo, this);
 		} catch (RemoteException e) {
-			System.err.println(e.message);
+			System.out.println("Caught remite exception");
 		}
+		catch (JvnException e)
+		{
+			System.out.println("Caught error in registration!");
+		}
+		
 	}
 	
 	/**
@@ -122,17 +145,22 @@ public class JvnServerImpl
 	* @return the JVN object 
 	* @throws JvnException
 	**/
+	@Override
 	public  JvnObject jvnLookupObject(String jon)
 	throws jvn.Utils.JvnException {
 		try {
 			JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
-			if (jo != null) {
-				this.objCache.put(jo.jvnGetObjectId(), jo);
-			}
-			return jo;
-
+			JvnObjectImpl localJo = new JvnObjectImpl(jo.jvnGetSharedObject(),jo.jvnGetObjectId(),"");
+			this.objCache.put(localJo.jvnGetObjectId(), localJo);
+			return localJo;
 		} catch (RemoteException e) {
-			System.err.println(e.message);
+			System.err.println("remote exception caught");
+			return null;
+		}
+		catch (JvnException e)
+		{
+			System.err.println(e.getMessage());
+			return null;
 		}
 
     // to be completed 
@@ -145,13 +173,15 @@ public class JvnServerImpl
 	* @return the current JVN object state
 	* @throws  JvnException
 	**/
+	@Override
    public Serializable jvnLockRead(int joi)
 	 throws JvnException {
 	   try {
 		   Serializable state = javanaiseCoord.jvnLockRead(joi, this);
 		   return state;
 	   } catch (RemoteException e) {
-		   System.err.println(e.message);
+		   System.err.println("Remote exception erreur caught");
+		   return null;
 	   }
 		// to be completed 
 		// return null;
@@ -163,13 +193,15 @@ public class JvnServerImpl
 	* @return the current JVN object state
 	* @throws  JvnException
 	**/
+	@Override
    public Serializable jvnLockWrite(int joi)
 	 throws JvnException {
 	   try {
 		   Serializable state = javanaiseCoord.jvnLockWrite(joi, this);
 		   return state;
 	   } catch (RemoteException e) {
-		   System.err.println(e.message);
+		   System.err.println("Remote exception erreur caught");
+		   return null;
 	   }
 		// to be completed 
 		// return null;
@@ -183,6 +215,7 @@ public class JvnServerImpl
 	* @return void
 	* @throws java.rmi.RemoteException,JvnException
 	**/
+	@Override
   public void jvnInvalidateReader(int joi)
 	throws java.rmi.RemoteException,jvn.Utils.JvnException {
 		// to be completed
@@ -207,6 +240,7 @@ public class JvnServerImpl
 	* @return the current JVN object state
 	* @throws java.rmi.RemoteException,JvnException
 	**/
+	@Override
    public Serializable jvnInvalidateWriterForReader(int joi)
 	 throws java.rmi.RemoteException,jvn.Utils.JvnException { 
 		// to be completed
