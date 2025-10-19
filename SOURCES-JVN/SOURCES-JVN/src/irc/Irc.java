@@ -31,14 +31,14 @@ public class Irc {
 		   
 		// initialize JVN
 		JvnServerImpl js = JvnServerImpl.jvnGetServer();
-		System.out.println("js is :" + js);
+		//System.out.println("js is :" + js);
 		// look up the IRC object in the JVN server
 		// if not found, create it, and register it in the JVN server
 		JvnObject jo = js.jvnLookupObject("IRC");
 		   
 		if (jo == null) {
 			System.out.println("Creating object...");
-			jo = js.jvnCreateObject((Serializable) new Sentence("Secret Message"));
+			jo = js.jvnCreateObject((Serializable) new Sentence());
 			// after creation, I have a write lock on the object
 			jo.jvnUnLock();
 			js.jvnRegisterObject("IRC", jo);
@@ -58,7 +58,6 @@ public class Irc {
 	public Irc(JvnObject jo) throws JvnException {
 		sentence = jo;
 		System.out.println("Object received : " + jo);
-		System.out.println(((Sentence)(sentence.jvnGetSharedObject())).getPrivateMessage());
 		frame=new Frame();
 		frame.setLayout(new GridLayout(1,1));
 		text=new TextArea(10,60);

@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-
+import jvn.Annotations.*;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
 
@@ -35,10 +35,10 @@ public class JvnHandler implements InvocationHandler {
         //throw new UnsupportedOperationException("Unimplemented method 'invoke'");
 
         try {
-            if (method.isAnnotationPresent(null)){ // add annotation here
+            if (method.isAnnotationPresent(ReadLock.class)){ // add annotation here
                 System.out.println("[JvnHandler] lock read");
                 jo.jvnLockRead();
-            } else if (method.isAnnotationPresent(null)){ // add annotation here
+            } else if (method.isAnnotationPresent(WriteLock.class)){ // add annotation here
                 System.out.println("[JvnHandler] lock write");
                 jo.jvnLockWrite();
             }
