@@ -70,7 +70,7 @@ public class Irc {
 		text = new TextArea("", 10, 60, TextArea.SCROLLBARS_VERTICAL_ONLY);
 		text.setEditable(false);
 		text.setForeground(Color.red);
-		text.setBackground(Color.white);
+		text.setBackground(Color.black);
 		text.setFont(new Font("Consolas", Font.PLAIN, 14));
 		frame.add(text, BorderLayout.CENTER);
 		
@@ -100,7 +100,6 @@ public class Irc {
 		frame.add(inputPanel, BorderLayout.SOUTH);
 
 		frame.setSize(600, 300);
-		frame.setLocationRelativeTo(null); // center the frame
 		frame.setVisible(true);
 
 	}
@@ -129,7 +128,7 @@ public class Irc {
 		
 		// invoke the method
 		String s = ((Sentence)(irc.sentence.jvnGetSharedObject())).read();
-		System.out.println("s is :" + s);
+		System.out.println("s is : " + s);
 		// unlock the object
 		irc.sentence.jvnUnLock();
 		
@@ -169,6 +168,9 @@ public class Irc {
 		
 		// unlock the object
 		irc.sentence.jvnUnLock();
+
+		// irc.data.setText("");
+		// irc.text.append(s+"\n");
 	 } catch (JvnException je) {
 		   System.out.println("IRC problem  : " + je.getMessage());
 	 }
