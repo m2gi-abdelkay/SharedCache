@@ -31,30 +31,30 @@ public class JvnHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         
-        // TODO Auto-generated method stub
-        //throw new UnsupportedOperationException("Unimplemented method 'invoke'");
-
+        boolean lockAcquired = false;
+        
         try {
-            if (method.isAnnotationPresent(ReadLock.class)){ // add annotation here
+            if (method.isAnnotationPresent(ReadLock.class)) {
                 System.out.println("[JvnHandler] lock read");
                 jo.jvnLockRead();
-            } else if (method.isAnnotationPresent(WriteLock.class)){ // add annotation here
+                lockAcquired = true;
+            } else if (method.isAnnotationPresent(WriteLock.class)) {
                 System.out.println("[JvnHandler] lock write");
                 jo.jvnLockWrite();
+                lockAcquired = true;
             }
 
-
-
-
             Object res = method.invoke(jo.jvnGetSharedObject(), args);
-            jo.jvnUnLock();
-
             return res;
-        } catch (Exception e){
+            
+        } catch (Exception e) {
             e.printStackTrace();
+            throw e;
+        } finally {
+            if (lockAcquired) {
+                jo.jvnUnLock();
+            }
         }
-
-        return null;
     }
     
 }
