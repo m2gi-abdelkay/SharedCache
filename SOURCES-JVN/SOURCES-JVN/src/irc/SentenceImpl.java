@@ -25,7 +25,7 @@ public class SentenceImpl implements java.io.Serializable, Sentence {
 	@Override
 	@WriteLock
 	public void write(String text) {
-		//System.out.println("This text :" + text + "is being saved!");
+		System.out.println("This text :" + text + " is being saved!");
 		data = text;
 	}
 

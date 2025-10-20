@@ -154,6 +154,7 @@ public class Irc {
 	   try {	
 		// get the value to be written from the buffer
     String s = irc.data.getText();
+	System.out.println("Got text : " + s);
         	
     // Use proxy - locking is handled automatically
 		irc.sentenceProxy.write(s);

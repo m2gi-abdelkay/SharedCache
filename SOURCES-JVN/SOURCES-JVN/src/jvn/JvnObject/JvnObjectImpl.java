@@ -85,6 +85,7 @@ public class JvnObjectImpl implements JvnObject{
 
     @Override
     public synchronized void jvnLockWrite() throws JvnException {
+        System.out.println("Executing jvn Lock write with state :" + state);
         if (state != JvnSTATES.WC && state != JvnSTATES.W) {
             obj = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnGetObjectId());
         }
