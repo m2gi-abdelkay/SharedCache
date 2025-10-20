@@ -1,0 +1,15 @@
+# Ignorer tous les fichiers compilés Java
+*.class
+
+
+
+# Ignorer les répertoires binaires et de build
+/bin/
+
+
+# Ignorer les fichiers générés par IDE
+.idea/
+.vscode/
+.classpath
+.project
+.settings/
