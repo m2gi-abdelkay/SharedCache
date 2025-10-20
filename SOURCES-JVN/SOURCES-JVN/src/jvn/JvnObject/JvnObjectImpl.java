@@ -18,11 +18,8 @@ enum JvnSTATES {
 public class JvnObjectImpl implements JvnObject{
     private Serializable obj; 
     private int id;
-    private JvnSTATES state;
-
     public String name;
-
-
+    private JvnSTATES state;
 
     public JvnObjectImpl(Serializable o, int id, String lockMode){
         this.obj = o;
@@ -79,15 +76,16 @@ public class JvnObjectImpl implements JvnObject{
                 state = JvnSTATES.R;
                 break;
             default:
-                obj = JvnServerImpl.jvnGetServer().jvnLockRead(jvnGetObjectId());
-                state = JvnSTATES.R;
+            obj = JvnServerImpl.jvnGetServer().jvnLockRead(jvnGetObjectId());
+            state = JvnSTATES.R;
         }
+        System.out.println("[JVN Object " + id + "] State changed to " + state);
     }
 
 
     @Override
-    public synchronized void jvnLockWrite() throws JvnException{
-        if (state != JvnSTATES.WC) {
+    public synchronized void jvnLockWrite() throws JvnException {
+        if (state != JvnSTATES.WC && state != JvnSTATES.W) {
             obj = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnGetObjectId());
         }
         state = JvnSTATES.W;
@@ -168,8 +166,5 @@ public class JvnObjectImpl implements JvnObject{
 
         return obj;
     } 
-
-
-
 
 }
