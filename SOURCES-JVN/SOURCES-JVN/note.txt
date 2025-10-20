@@ -1,0 +1,5 @@
+utiliser la reflexibilité pour recuperer  les interfaces 
+classe modeur: composant charger decharger les classes dans la 
+transparence 
+utilisation des annotations,  presentes pendant toute l'execution 
+

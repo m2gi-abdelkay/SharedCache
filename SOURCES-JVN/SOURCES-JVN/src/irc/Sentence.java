@@ -8,19 +8,8 @@
 
 package irc;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import jvn.Annotations.*;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-@interface ReadWriteAnnotation {
-	String[] readMethods() default {};
-	String[] writeMethods() default {};
-}
-
-@ReadWriteAnnotation(readMethods = {"read"}, writeMethods = {"write"})
 public class Sentence implements java.io.Serializable {
 	/**
 	 * 
@@ -32,12 +21,12 @@ public class Sentence implements java.io.Serializable {
 		data = "";
 	}
 
-
-	
+	@WriteLock
 	public void write(String text) {
 		//System.out.println("This text :" + text + "is being saved!");
 		data = text;
 	}
+	@ReadLock
 	public String read() {
 		return data;	
 	}

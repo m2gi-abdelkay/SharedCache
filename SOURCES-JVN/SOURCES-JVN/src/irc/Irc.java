@@ -10,6 +10,7 @@ package irc;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import jvn.Handler.JvnHandler;
 import jvn.Server.JvnServerImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
@@ -20,6 +21,7 @@ public class Irc {
 	public TextField	data;
 	Frame 			frame;
 	JvnObject       sentence;
+	Sentence        sentenceProxy;  // Add proxy field
 
 
   /**
@@ -31,7 +33,7 @@ public class Irc {
 		   
 		// initialize JVN
 		JvnServerImpl js = JvnServerImpl.jvnGetServer();
-		System.out.println("js is :" + js);
+		//System.out.println("js is :" + js);
 		// look up the IRC object in the JVN server
 		// if not found, create it, and register it in the JVN server
 		JvnObject jo = js.jvnLookupObject("IRC");
@@ -56,26 +58,51 @@ public class Irc {
    @param jo the JVN object representing the Chat
    **/
 	public Irc(JvnObject jo) throws JvnException {
+
 		sentence = jo;
+		// Create proxy for automatic locking
+		sentenceProxy = (Sentence) JvnHandler.newInstance(jo);
 		System.out.println("Object received : " + jo);
 		frame=new Frame();
 		frame.setLayout(new GridLayout(1,1));
 		text=new TextArea(10,60);
 		text.setEditable(false);
 		text.setForeground(Color.red);
-		frame.add(text);
-		data=new TextField(40);
-		frame.add(data);
-		Button read_button = new Button("read");
+		text.setBackground(Color.black);
+		text.setFont(new Font("Consolas", Font.PLAIN, 14));
+		frame.add(text, BorderLayout.CENTER);
+		
+	
+		// Input panel
+		Panel inputPanel = new Panel(new BorderLayout(5, 5));
+		data = new TextField(40);
+		data.setFont(new Font("Consolas", Font.PLAIN, 14));
+		inputPanel.add(data, BorderLayout.CENTER);
+
+		// Buttons panel
+		Panel buttonPanel = new Panel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+		Button read_button = new Button("Read");
+		read_button.setBackground(new Color(200, 230, 255));
+		read_button.setFont(new Font("Arial", Font.BOLD, 13));
 		read_button.addActionListener(new readListener(this));
-		frame.add(read_button);
-		Button write_button = new Button("write");
+
+		Button write_button = new Button("Write");
+		write_button.setBackground(new Color(220, 255, 220));
+		write_button.setFont(new Font("Arial", Font.BOLD, 13));
 		write_button.addActionListener(new writeListener(this));
-		frame.add(write_button);
-		frame.setSize(545,201);
-		text.setBackground(Color.black); 
+
+		buttonPanel.add(read_button);
+		buttonPanel.add(write_button);
+		inputPanel.add(buttonPanel, BorderLayout.EAST);
+
+		frame.add(inputPanel, BorderLayout.SOUTH);
+
+		frame.setSize(600, 300);
 		frame.setVisible(true);
+
 	}
+
+	
 }
 
 
@@ -92,22 +119,18 @@ public class Irc {
  /**
   * Management of user events
   **/
+	@Override
 	public void actionPerformed (ActionEvent e) {
 	 try {
-		// lock the object in read mode
-		irc.sentence.jvnLockRead();
-		
-		// invoke the method
-		String s = ((Sentence)(irc.sentence.jvnGetSharedObject())).read();
+		// Use proxy - locking is handled automatically
+		String s = irc.sentenceProxy.read();
 		System.out.println("s is :" + s);
-		// unlock the object
-		irc.sentence.jvnUnLock();
 		
 		// display the read value
 		irc.data.setText(s);
 		irc.text.append(s+"\n");
-	   } catch (JvnException je) {
-		   System.out.println("IRC problem : " + je.getMessage());
+	   } catch (Exception ex) {
+		   System.out.println("IRC problem : " + ex.getMessage());
 	   }
 	}
 }
@@ -125,22 +148,18 @@ public class Irc {
   /**
     * Management of user events
    **/
+	@Override
 	public void actionPerformed (ActionEvent e) {
 	   try {	
 		// get the value to be written from the buffer
     String s = irc.data.getText();
         	
-    // lock the object in write mode
-		irc.sentence.jvnLockWrite();
-		System.out.println("I got the lock!");
+    // Use proxy - locking is handled automatically
+		irc.sentenceProxy.write(s);
+		System.out.println("Write completed!");
 		
-		// invoke the method
-		((Sentence)(irc.sentence.jvnGetSharedObject())).write(s);
-		
-		// unlock the object
-		irc.sentence.jvnUnLock();
-	 } catch (JvnException je) {
-		   System.out.println("IRC problem  : " + je.getMessage());
+	 } catch (Exception ex) {
+		   System.out.println("IRC problem  : " + ex.getMessage());
 	 }
 	}
 }
