@@ -14,6 +14,7 @@ import jvn.Handler.JvnHandler;
 import jvn.Server.JvnServerImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
+import jvn.Utils.Sentence;
 
 
 public class Irc {
@@ -40,7 +41,7 @@ public class Irc {
 		   
 		if (jo == null) {
 			System.out.println("Creating object...");
-			jo = js.jvnCreateObject((Serializable) new Sentence());
+			jo = js.jvnCreateObject((Serializable) new SentenceImpl());
 			// after creation, I have a write lock on the object
 			jo.jvnUnLock();
 			js.jvnRegisterObject("IRC", jo);
