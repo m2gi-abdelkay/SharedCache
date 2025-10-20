@@ -10,6 +10,7 @@ package irc;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import jvn.Handler.JvnHandler;
 import jvn.Server.JvnServerImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
@@ -20,6 +21,7 @@ public class Irc {
 	public TextField	data;
 	Frame 			frame;
 	JvnObject       sentence;
+	Sentence        sentenceProxy;  // Add proxy field
 
 
   /**
@@ -31,14 +33,14 @@ public class Irc {
 		   
 		// initialize JVN
 		JvnServerImpl js = JvnServerImpl.jvnGetServer();
-		System.out.println("js is :" + js);
+		//System.out.println("js is :" + js);
 		// look up the IRC object in the JVN server
 		// if not found, create it, and register it in the JVN server
 		JvnObject jo = js.jvnLookupObject("IRC");
 		   
 		if (jo == null) {
 			System.out.println("Creating object...");
-			jo = js.jvnCreateObject((Serializable) new Sentence("Secret Message"));
+			jo = js.jvnCreateObject((Serializable) new Sentence());
 			// after creation, I have a write lock on the object
 			jo.jvnUnLock();
 			js.jvnRegisterObject("IRC", jo);
@@ -58,16 +60,12 @@ public class Irc {
 	public Irc(JvnObject jo) throws JvnException {
 
 		sentence = jo;
+		// Create proxy for automatic locking
+		sentenceProxy = (Sentence) JvnHandler.newInstance(jo);
 		System.out.println("Object received : " + jo);
-		System.out.println(((Sentence)(sentence.jvnGetSharedObject())).getPrivateMessage());
-
-
-		frame = new Frame("JVN - Distributed IRC");
-		frame.setLayout(new BorderLayout(10, 10));
-		frame.setBackground(new Color(240, 240, 240));
-
-		// main text area
-		text = new TextArea("", 10, 60, TextArea.SCROLLBARS_VERTICAL_ONLY);
+		frame=new Frame();
+		frame.setLayout(new GridLayout(1,1));
+		text=new TextArea(10,60);
 		text.setEditable(false);
 		text.setForeground(Color.red);
 		text.setBackground(Color.black);
@@ -121,22 +119,18 @@ public class Irc {
  /**
   * Management of user events
   **/
+	@Override
 	public void actionPerformed (ActionEvent e) {
 	 try {
-		// lock the object in read mode
-		irc.sentence.jvnLockRead();
-		
-		// invoke the method
-		String s = ((Sentence)(irc.sentence.jvnGetSharedObject())).read();
-		System.out.println("s is : " + s);
-		// unlock the object
-		irc.sentence.jvnUnLock();
+		// Use proxy - locking is handled automatically
+		String s = irc.sentenceProxy.read();
+		System.out.println("s is :" + s);
 		
 		// display the read value
 		irc.data.setText(s);
 		irc.text.append(s+"\n");
-	   } catch (JvnException je) {
-		   System.out.println("IRC problem : " + je.getMessage());
+	   } catch (Exception ex) {
+		   System.out.println("IRC problem : " + ex.getMessage());
 	   }
 	}
 }
@@ -154,25 +148,18 @@ public class Irc {
   /**
     * Management of user events
    **/
+	@Override
 	public void actionPerformed (ActionEvent e) {
 	   try {	
 		// get the value to be written from the buffer
     String s = irc.data.getText();
         	
-    // lock the object in write mode
-		irc.sentence.jvnLockWrite();
-		System.out.println("I got the lock!");
+    // Use proxy - locking is handled automatically
+		irc.sentenceProxy.write(s);
+		System.out.println("Write completed!");
 		
-		// invoke the method
-		((Sentence)(irc.sentence.jvnGetSharedObject())).write(s);
-		
-		// unlock the object
-		irc.sentence.jvnUnLock();
-
-		// irc.data.setText("");
-		// irc.text.append(s+"\n");
-	 } catch (JvnException je) {
-		   System.out.println("IRC problem  : " + je.getMessage());
+	 } catch (Exception ex) {
+		   System.out.println("IRC problem  : " + ex.getMessage());
 	 }
 	}
 }
