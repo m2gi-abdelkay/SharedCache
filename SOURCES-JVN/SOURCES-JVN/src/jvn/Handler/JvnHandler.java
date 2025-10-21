@@ -4,9 +4,9 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import jvn.Annotations.*;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
-import jvn.Annotations.*;
 
 public class JvnHandler implements InvocationHandler {
 
@@ -69,9 +69,9 @@ public class JvnHandler implements InvocationHandler {
             Object res;
             if (implMethod != null) {
                 System.out.println("[JvnHandler] Calling impl method!");
-                res = implMethod.invoke(target, args);
+                res = implMethod.invoke(jo.jvnGetSharedObject(), args); // <--- bug is here, for some reason when this method is invoked it does the old version
             } else {
-                res = method.invoke(target, args);
+                res = method.invoke(jo.jvnGetSharedObject(), args);
             }
 
             return res;

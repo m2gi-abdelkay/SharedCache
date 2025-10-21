@@ -9,6 +9,7 @@
 
 package jvn.Coordinator;
 
+import irc.SentenceImpl;
 import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -85,7 +86,7 @@ public class JvnCoordImpl
     }
 
     System.out.println("About to register object :" + jon + " with id:" + jo.jvnGetObjectId());
-    objectIdsMap.put(jo.jvnGetObjectId(), jo);
+    objectIdsMap.put(jo.jvnGetObjectId(), jo.jvnGetSharedObject());
     registrationMap.put(jon, jo);
   }
   
@@ -192,6 +193,8 @@ public class JvnCoordImpl
             JvnRemoteServer serverWithWLock = serverArray.iterator().next();
             System.out.println("Invalidating server :" + serverWithWLock);
             Serializable updatedObject = serverWithWLock.jvnInvalidateWriterForReader(joi);
+            SentenceImpl sentence = (SentenceImpl) updatedObject;
+            sentence.read();
             //Store the updated object:
             System.out.println("Received updated object.");
             objectIdsMap.put(joi, updatedObject);
@@ -277,7 +280,7 @@ public class JvnCoordImpl
             //Get the server that has the lock
             System.out.println("Invalidating other server...");
             JvnRemoteServer serverWithWLock = serverArray.iterator().next();
-            JvnObject updatedObject = (JvnObject) serverWithWLock.jvnInvalidateWriter(joi);
+            Serializable updatedObject = (Serializable) serverWithWLock.jvnInvalidateWriter(joi);
             System.out.println("Server: " + serverWithWLock + " has been invalidated.");
             //Store the updated object:
             System.out.println("Received updated object and storing it.");

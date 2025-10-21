@@ -2,6 +2,8 @@
 package jvn.JvnObject; 
 
 import java.io.Serializable;
+
+import irc.SentenceImpl;
 import jvn.Server.JvnServerImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
@@ -40,6 +42,7 @@ public class JvnObjectImpl implements JvnObject{
 
     @Override
     public Serializable jvnGetSharedObject() throws JvnException{
+        System.out.println("[JvnObjectImpl] jvnGetSharedObject called for id=" + id + " objId=" + System.identityHashCode(obj) + " class=" + obj.getClass().getName());
         return obj;
     }
 
@@ -151,7 +154,8 @@ public class JvnObjectImpl implements JvnObject{
     }
 
     @Override 
-    public synchronized Serializable jvnInvalidateWriterForReader() throws JvnException{
+    public synchronized Serializable jvnInvalidateWriterForReader() throws JvnException {
+        System.out.println("[JvnObjectImplementation] s is :" + ((SentenceImpl)obj).read());
         switch (state) {
             case RWC -> {
                 customWait();

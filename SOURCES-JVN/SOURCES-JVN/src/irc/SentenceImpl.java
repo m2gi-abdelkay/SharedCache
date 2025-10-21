@@ -17,6 +17,8 @@ public class SentenceImpl implements java.io.Serializable, Sentence {
 	 */
 	private static final long serialVersionUID = 1L;
 	String 	data;
+	// version helps detect updates and ordering
+	private int version = 0;
   
 	public SentenceImpl() {
 		data = "";
@@ -25,14 +27,16 @@ public class SentenceImpl implements java.io.Serializable, Sentence {
 	@Override
 	@WriteLock
 	public void write(String text) {
-		System.out.println("This text :" + text + " is being saved!");
 		data = text;
+		version++;
+		System.out.println("[SentenceImpl] write: v=" + version + " text='" + text + "' (id=" + System.identityHashCode(this) + ")");
 	}
 
 	@Override
 	@ReadLock
 	public String read() {
-		return data;	
+		System.out.println("[SentenceImpl] read: v=" + version + " (id=" + System.identityHashCode(this) + ")");
+		return data;    
 	}
 	
 }
