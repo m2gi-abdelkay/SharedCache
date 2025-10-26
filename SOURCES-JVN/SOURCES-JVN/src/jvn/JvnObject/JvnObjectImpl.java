@@ -2,6 +2,8 @@
 package jvn.JvnObject; 
 
 import java.io.Serializable;
+
+import irc.SentenceImpl;
 import jvn.Server.JvnServerImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
@@ -40,6 +42,7 @@ public class JvnObjectImpl implements JvnObject{
 
     @Override
     public Serializable jvnGetSharedObject() throws JvnException{
+        System.out.println("[JvnObjectImpl] jvnGetSharedObject called for id=" + id + " objId=" + System.identityHashCode(obj) + " class=" + obj.getClass().getName());
         return obj;
     }
 
@@ -64,7 +67,7 @@ public class JvnObjectImpl implements JvnObject{
 
     @Override
     public synchronized void jvnLockRead() throws JvnException{
-        System.out.println("Executing jvn Lock read with state :" + state);
+        System.out.println("[JvnObjectImpl] Executing jvn Lock read with state :" + state);
         switch (state){
             case RC:
                 state = JvnSTATES.R;
@@ -85,6 +88,7 @@ public class JvnObjectImpl implements JvnObject{
 
     @Override
     public synchronized void jvnLockWrite() throws JvnException {
+        System.out.println("[JvnObjectImpl] Executing jvn Lock write with state :" + state);
         if (state != JvnSTATES.WC && state != JvnSTATES.W) {
             obj = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnGetObjectId());
         }
@@ -123,7 +127,7 @@ public class JvnObjectImpl implements JvnObject{
                 state = JvnSTATES.NL;
                 break;
             default:
-                System.out.println("InvalidateReader called on state : " + state);
+                System.out.println("[JvnObjectImpl] InvalidateReader called on state : " + state);
         }
     }
 
@@ -143,14 +147,15 @@ public class JvnObjectImpl implements JvnObject{
                 state = JvnSTATES.NL;
                 break;
             default:
-                System.out.println("InvalidateWriter called on state : " + state);
+                System.out.println("[JvnObjectImpl] InvalidateWriter called on state : " + state);
         }
 
         return obj;
     }
 
     @Override 
-    public synchronized Serializable jvnInvalidateWriterForReader() throws JvnException{
+    public synchronized Serializable jvnInvalidateWriterForReader() throws JvnException {
+        System.out.println("[JvnObjectImpl] s is :" + ((SentenceImpl)obj).read());
         switch (state) {
             case RWC -> {
                 customWait();
@@ -161,7 +166,7 @@ public class JvnObjectImpl implements JvnObject{
                 customWait();
                 state = JvnSTATES.RC;
             }
-            default -> System.out.println("InvalidateWriterForReader called on state : " + state);
+            default -> System.out.println("[JvnObjectImpl] InvalidateWriterForReader called on state : " + state);
         }
 
         return obj;

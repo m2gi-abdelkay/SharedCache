@@ -32,27 +32,56 @@ public class JvnHandler implements InvocationHandler {
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         
         boolean lockAcquired = false;
-        
+        System.out.println("[JvnHandler] I'm here!");
+        Object target = jo.jvnGetSharedObject();
+
         try {
-            if (method.isAnnotationPresent(ReadLock.class)) {
+            // locate implementation method on the real target class
+            Method implMethod = null;
+            try {
+                implMethod = target.getClass().getMethod(method.getName(), method.getParameterTypes());
+            } catch (NoSuchMethodException nsme) {
+                System.out.println("No impl method found");
+                // no impl method found; that's fine, we'll invoke via interface method
+            }
+
+            // check annotations on interface method first, then on implementation
+            boolean readAnnotated = method.isAnnotationPresent(ReadLock.class)
+                    || (implMethod != null && implMethod.isAnnotationPresent(ReadLock.class));
+            boolean writeAnnotated = method.isAnnotationPresent(WriteLock.class)
+                    || (implMethod != null && implMethod.isAnnotationPresent(WriteLock.class));
+
+            System.out.println("[JvnHandler] method=" + method.getName() + ", readAnn=" + readAnnotated + ", writeAnn=" + writeAnnotated + ", implMethodPresent=" + (implMethod!=null));
+
+            if (readAnnotated) {
                 System.out.println("[JvnHandler] lock read");
                 jo.jvnLockRead();
                 lockAcquired = true;
-            } else if (method.isAnnotationPresent(WriteLock.class)) {
+            } else if (writeAnnotated) {
                 System.out.println("[JvnHandler] lock write");
                 jo.jvnLockWrite();
                 lockAcquired = true;
+            } else {
+                System.out.println("[JvnHandler] no lock annotation found");
             }
 
-            Object res = method.invoke(jo.jvnGetSharedObject(), args);
+            // invoke implementation method if available, otherwise invoke the interface method
+            Object res;
+            if (implMethod != null) {
+                System.out.println("[JvnHandler] Calling impl method!");
+                res = implMethod.invoke(jo.jvnGetSharedObject(), args); // <--- bug is here, for some reason when this method is invoked it does the old version
+            } else {
+                res = method.invoke(jo.jvnGetSharedObject(), args);
+            }
+
             return res;
-            
-        } catch (Exception e) {
+
+        } catch (Throwable e) {
             e.printStackTrace();
             throw e;
         } finally {
             if (lockAcquired) {
-                jo.jvnUnLock();
+                try { jo.jvnUnLock(); } catch (Exception ex) { System.err.println("unlock error: " + ex.getMessage()); }
             }
         }
     }

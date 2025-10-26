@@ -59,7 +59,7 @@ public class JvnServerImpl
     * @throws JvnException
     **/
 	public static JvnServerImpl jvnGetServer() {
-		System.out.println("Executing this function...");
+		System.out.println("[jvnServerImpl] Executing jvnGetServer...");
 		if (js == null){
 			try {
 				System.out.println("Server is null initially.");
@@ -168,8 +168,9 @@ public class JvnServerImpl
    public Serializable jvnLockRead(int joi)
 	 throws JvnException {
 	   try {
-		   Serializable state = javanaiseCoord.jvnLockRead(joi, this);
-		   return state;
+						 Serializable state = javanaiseCoord.jvnLockRead(joi, this);
+						 System.out.println("[JvnServerImpl] jvnLockRead returned for joi=" + joi + " objId=" + System.identityHashCode(state) + " state=" + state.getClass().getName());
+						 return state;
 	   } catch (RemoteException e) {
 		   System.err.println("Remote exception erreur caught");
 		   return null;
@@ -188,8 +189,9 @@ public class JvnServerImpl
    public Serializable jvnLockWrite(int joi)
 	 throws JvnException {
 	   try {
-		   Serializable state = javanaiseCoord.jvnLockWrite(joi, this);
-		   return state;
+						 Serializable state = javanaiseCoord.jvnLockWrite(joi, this);
+						 System.out.println("[JvnServerImpl] jvnLockWrite returned for joi=" + joi + " objId=" + System.identityHashCode(state) + " state=" + state.getClass().getName());
+						 return state;
 	   } catch (RemoteException e) {
 		   System.err.println("Remote exception erreur caught");
 		   return null;
