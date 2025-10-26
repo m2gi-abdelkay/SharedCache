@@ -59,7 +59,7 @@ public class JvnServerImpl
     * @throws JvnException
     **/
 	public static JvnServerImpl jvnGetServer() {
-		System.out.println("Executing jvnGetServer...");
+		System.out.println("[jvnServerImpl] Executing jvnGetServer...");
 		if (js == null){
 			try {
 				System.out.println("Server is null initially.");

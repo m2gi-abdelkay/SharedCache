@@ -9,7 +9,6 @@
 
 package jvn.Coordinator;
 
-import irc.SentenceImpl;
 import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -64,7 +63,7 @@ public class JvnCoordImpl
   public synchronized int jvnGetObjectId()
   throws java.rmi.RemoteException,jvn.Utils.JvnException {
     start_id++;
-    System.out.println("Will assign Id :" + start_id + " to new object");
+    System.out.println("[JvnCoordinator] Will assign Id :" + start_id + " to new object");
     return start_id;
   }
   
@@ -81,11 +80,11 @@ public class JvnCoordImpl
 
     if(registrationMap.containsKey(jon))
     {
-      System.out.println("Cannot register already registered object!");
-      throw new JvnException("Object name is already assigned to an object, please change object name.");
+      System.out.println("[JvnCoordinator] Cannot register already registered object!");
+      throw new JvnException(" Object name is already assigned to an object, please change object name.");
     }
 
-    System.out.println("About to register object :" + jon + " with id:" + jo.jvnGetObjectId());
+    System.out.println("[JvnCoordinator] About to register object :" + jon + " with id:" + jo.jvnGetObjectId());
     objectIdsMap.put(jo.jvnGetObjectId(), jo.jvnGetSharedObject());
     registrationMap.put(jon, jo);
   }
@@ -101,10 +100,10 @@ public class JvnCoordImpl
   throws java.rmi.RemoteException,jvn.Utils.JvnException{
     if(!registrationMap.containsKey(jon))
     {
-      System.out.println("Object: " + jon + " NOT FOUND!");
+      System.out.println("[JvnCoordinator] Object: " + jon + " NOT FOUND!");
       throw new JvnException("Object not found!");
     }
-    System.out.println("Object :" + jon + " FOUND!");
+    System.out.println("[JvnCoordinator] Object :" + jon + " FOUND!");
     return registrationMap.get(jon);
   }
   
@@ -120,7 +119,7 @@ public class JvnCoordImpl
    throws java.rmi.RemoteException, JvnException{
 
     // Get or create a lock object for this specific joi to enable fine-grained synchronization
-    System.out.println("Attempting to acquire a read lock for object :" + joi + " by server :"+ js);
+    System.out.println("[JvnCoordinator] Attempting to acquire a read lock for object :" + joi + " by server :"+ js);
     Object lockObject = objectLocks.computeIfAbsent(joi, k -> new Object());
     
     synchronized(lockObject) {
@@ -130,7 +129,7 @@ public class JvnCoordImpl
 
       if(!lockHashMap.containsKey(joi))
       {
-        System.out.println("No other server has acquired a lock on object: " + joi + ", granting READ lock...");
+        System.out.println("[JvnCoordinator] No other server has acquired a lock on object: " + joi + ", granting READ lock...");
         //This means no other server has a read or write lock on the object. 
         //Store the joi to the read_lock and remember the server that has this lock (cf cas de figure 2)
         lockHashMap.put(joi, LOCK_READ);
@@ -142,17 +141,17 @@ public class JvnCoordImpl
 
       if(lockHashMap.containsKey(joi))
       {
-        System.out.println("Object with id :" + joi + " already has a lock assigned to it. Determining type of lock...");
+        System.out.println("[JvnCoordinator] Object with id :" + joi + " already has a lock assigned to it. Determining type of lock...");
         //This means that a/many server(s) has/have a lock on our shared object. We retrieve the list of servers and the type of the lock:
         int lock_type = lockHashMap.get(joi);
         HashSet<JvnRemoteServer> serverArray = serverHashMap.get(joi);
         //Determine type of lock:
         if(lock_type == LOCK_READ)
         {
-          System.out.println("Object with id :" + joi + " has a READ lock assigned to it.");
+          System.out.println("[JvnCoordinator] Object with id :" + joi + " has a READ lock assigned to it.");
           // This means that one (or many) servers have a read lock on the object
           //Check whether we have one server in our list and it's the same server asking for the lock (cf cohérence cas de figure 4)
-          System.out.println("Checking who has the lock...");
+          System.out.println("[JvnCoordinator] Checking who has the lock...");
           if(serverArray.size() == 1 && serverArray.contains(js))
           {
             System.out.println("Server :" + js + " is requesting a READ lock even though it already has one. Returning the object as it is.");
@@ -162,7 +161,7 @@ public class JvnCoordImpl
 
           //Otherwise, add this server to the read lock (cohérence cas de figure 3):
           //No duplication concerns, we have a hashset
-          System.out.println("Check completed, adding server to the list of servers that have the lock.");
+          System.out.println("[JvnCoordinator] Check completed, adding server to the list of servers that have the lock.");
           serverArray.add(js);
           serverHashMap.put(joi, serverArray);
           //Since object is being read, then the version stored in our object map should be the latest version:
@@ -170,8 +169,8 @@ public class JvnCoordImpl
 
         }
         if(lock_type == LOCK_WRITE){
-          System.out.println("Object with id :" + joi + " has a WRITE lock assigned to it.");
-          System.out.println("Checking whether it is the same server....");
+          System.out.println("[JvnCoordinator] Object with id :" + joi + " has a WRITE lock assigned to it.");
+          System.out.println("[JvnCoordinator] Checking whether it is the same server....");
 
           //The lock type that we have is a WRITE LOCK
           //This means that one server has a write lock on our object
@@ -179,35 +178,33 @@ public class JvnCoordImpl
           //(since we only have one write lock, the serverArray list should always be 1)
           if(serverArray.contains(js))
           {
-            System.out.println("Server :" + js + " is requesting a READ lock even though it has a WRITE (greedy ass) lock. Returning object as it is.");
+            System.out.println("[JvnCoordinator] Server :" + js + " is requesting a READ lock even though it has a WRITE (greedy ass) lock. Returning object as it is.");
             //Then do nothing (an update is required at the JvnObjectLevel, see cas de cohérence figure 5)
             return objectIdsMap.get(joi);
           }
 
-          System.out.println("Check completed, another server has the lock.");
+          System.out.println("[JvnCoordinator] Check completed, another server has the lock.");
           //If the write lock is in another server (cf cohérence cas de figure 6):
           if(!serverArray.contains(js))
           {
-            System.out.println("Must invalidate other server...");
+            System.out.println("[JvnCoordinator] Must invalidate other server...");
             //Then we must invalidate, get the server which has the lock:
             JvnRemoteServer serverWithWLock = serverArray.iterator().next();
-            System.out.println("Invalidating server :" + serverWithWLock);
+            System.out.println("[JvnCoordinator] Invalidating server :" + serverWithWLock);
             Serializable updatedObject = serverWithWLock.jvnInvalidateWriterForReader(joi);
-            SentenceImpl sentence = (SentenceImpl) updatedObject;
-            sentence.read();
             //Store the updated object:
-            System.out.println("Received updated object.");
+            System.out.println("[JvnCoordinator] Received updated object " + updatedObject);
             objectIdsMap.put(joi, updatedObject);
             //Change the nature of the lock on the object:
-            System.out.println("Changing type of lock...");
+            System.out.println("[JvnCoordinator] Changing type of lock to LOCK READ");
             lockHashMap.put(joi, LOCK_READ);
             //Update the lock list:
-            System.out.println("Updating lock list...");
+            System.out.println("[JvnCoordinator] Updating lock list adding current server " + js + " and server with previous WRITE LOCK " + serverWithWLock );
             HashSet<JvnRemoteServer> newServerSet = new HashSet<>();
             newServerSet.add(serverWithWLock);
             newServerSet.add(js);
             serverHashMap.put(joi, newServerSet);
-            System.out.println("Job completed!");
+            System.out.println("[JvnCoordinator] Job completed!");
             //return the updated object
             return updatedObject;
             
@@ -232,7 +229,7 @@ public class JvnCoordImpl
    throws java.rmi.RemoteException, JvnException{
     
     // Get or create a lock object for this specific joi to enable fine-grained synchronization
-        System.out.println("Attempting to acquire a write lock for object :" + joi + " by server :"+ js);
+        System.out.println("[JvnCoordinator] Attempting to acquire a write lock for object :" + joi + " by server :"+ js);
 
     Object lockObject = objectLocks.computeIfAbsent(joi, k -> new Object());
     
@@ -243,7 +240,7 @@ public class JvnCoordImpl
 
       if(!lockHashMap.containsKey(joi))
       {
-        System.out.println("No other server has acquired a lock on object:" + joi + ", granting WRITE lock...");
+        System.out.println("[JvnCoordinator] No other server has acquired a lock on object:" + joi + ", granting WRITE lock...");
 
         //This means no other server has a read or write lock on the object. 
         //Store the joi to the read_lock and remember the server that has this lock (cf cas de figure 2)
@@ -256,38 +253,38 @@ public class JvnCoordImpl
 
       if(lockHashMap.containsKey(joi))
       {
-        System.out.println("Object with id :" + joi + " already has a lock assigned to it. Determining type of lock...");
+        System.out.println("[JvnCoordinator] Object with id :" + joi + " already has a lock assigned to it. Determining type of lock...");
 
         int lock_type = lockHashMap.get(joi);
         HashSet<JvnRemoteServer> serverArray = serverHashMap.get(joi);
         if(lock_type == LOCK_WRITE)
         {
-          System.out.println("Object with id :" + joi + " has a WRITE lock assigned to it.");
-          System.out.println("Checking whether it is the same server....");
+          System.out.println("[JvnCoordinator] Object with id :" + joi + " has a WRITE lock assigned to it.");
+          System.out.println("[JvnCoordinator] Checking whether it is the same server....");
 
           //If another server has a write lock, first
           //Check whether it is the same server as the one that is asking:
           if(serverArray.contains(js))
           {
-            System.out.println("Server: " + js + " is trying to acquire a WRITE lock even though it has one. Return object as it is...");
+            System.out.println("[JvnCoordinator] Server: " + js + " is trying to acquire a WRITE lock even though it has one. Return object as it is...");
             //Then in this case, do nothing and wait until someone else asks for the lock:
             return objectIdsMap.get(joi);
           }
-          System.out.println("Another server has the write lock. Must invalidate.");
+          System.out.println("[JvnCoordinator] Another server has the write lock. Must invalidate.");
           //Otherwise, this means someone else has the lock. We must invalidate the writer (cf cohérence cas de figure 7)
           if(!serverArray.contains(js))
           {
             //Get the server that has the lock
-            System.out.println("Invalidating other server...");
+            System.out.println("[JvnCoordinator] Invalidating other server...");
             JvnRemoteServer serverWithWLock = serverArray.iterator().next();
             Serializable updatedObject = (Serializable) serverWithWLock.jvnInvalidateWriter(joi);
-            System.out.println("Server: " + serverWithWLock + " has been invalidated.");
+            System.out.println("[JvnCoordinator] Server: " + serverWithWLock + " has been invalidated.");
             //Store the updated object:
-            System.out.println("Received updated object and storing it.");
+            System.out.println("[JvnCoordinator] Received updated object " + updatedObject + " and storing it.");
             objectIdsMap.put(joi, updatedObject);
             //No need to update the type of lock on the object (still a write lock)
             ///However, update the server that has the lock:
-            System.out.println("Updating list of servers...");
+            System.out.println("[JvnCoordinator] Updating list of servers, only the current server " + js + "has a lock on the object");
             HashSet<JvnRemoteServer> newServerSet = new HashSet<>();
             newServerSet.add(js);
             serverHashMap.put(joi, newServerSet);
@@ -300,26 +297,27 @@ public class JvnCoordImpl
         {
           //Here we know that one or many servers have a read lock on the object. (Potentially the server calling itself has a reader lock)
           //In this case, we must invalidate all readers (except potentially yourself)
-          System.out.println("Object with id :" + joi + " has a READ lock assigned to it.");
+          System.out.println("[JvnCoordinator] Object with id :" + joi + " has a READ lock assigned to it.");
 
-          System.out.println("Must invalidate all other readers. Checking whether the current server is among the servers that have a read lock on the object...");
+          System.out.println("[JvnCoordinator] Must invalidate all other readers. Checking whether the current server is among the servers that have a read lock on the object...");
           if(serverArray.contains(js))
           {
-            System.out.println("Server:" + js + " is among the servers with a read lock. Removing them...");
+            System.out.println("[JvnCoordinator] Server:" + js + " is among the servers with a read lock. Removing them...");
             serverArray.remove(js);
           }
-          System.out.println("Invalidating all servers with a read lock on object " +joi+"...");
+          System.out.println("[JvnCoordinator] Invalidating all servers with a read lock on object " +joi+"...");
           for(JvnRemoteServer jvnServer : serverArray)
           {
       
             jvnServer.jvnInvalidateReader(joi);
-            System.out.println("Server : " + jvnServer + " has been invalidated.");
+            System.out.println("[JvnCoordinator] Server : " + jvnServer + " has been invalidated.");
             
           }
           //Change lock on object:
-          System.out.println("Changing lock etc etc");
+          System.out.println("[JvnCoordinator] Changing lock to WRITE LOCK");
           lockHashMap.put(joi, LOCK_WRITE);
           //Add server requesting lock
+          System.out.println("[JvnCoordinator] Updating list of servers, only the current server " + js + "has a lock on the object");
           HashSet<JvnRemoteServer> newServerSet = new HashSet<>();
           newServerSet.add(js);
           serverHashMap.put(joi, newServerSet);
@@ -345,7 +343,7 @@ public class JvnCoordImpl
     
     // We need to collect the JOIs to process to avoid ConcurrentModificationException
     // and also to synchronize on each object individually
-    System.out.println("About to terminate Server: " + js);
+    System.out.println("[JvnCoordinator] About to terminate Server: " + js);
     for(Integer joi : serverHashMap.keySet())
     {
       // Get the lock for this specific object to ensure thread safety
@@ -359,13 +357,13 @@ public class JvnCoordImpl
         if(servers != null && servers.contains(js))
         {
           //Then remove it
-          System.out.println("Removing server from list of servers that have a lock on object id:" + joi);
+          System.out.println("[JvnCoordinator] Removing server from list of servers that have a lock on object id:" + joi);
           servers.remove(js);
 
           //If the list is now empty (was the last element)
           if(servers.isEmpty())
           {
-            System.out.println("This was the last server having a lock on the object, removing lock from object and removing list of servers...");
+            System.out.println("[JvnCoordinator] This was the last server having a lock on the object, removing lock from object and removing list of servers...");
             //Then mark the object as unlocked
             lockHashMap.remove(joi);
             serverHashMap.remove(joi);
@@ -373,7 +371,7 @@ public class JvnCoordImpl
             objectLocks.remove(joi);
           }
           else{
-            System.out.println("List of servers is updating...");
+            System.out.println("[JvnCoordinator] List of servers is updating...");
             //Update the list of servers
             serverHashMap.put(joi, servers);
           }

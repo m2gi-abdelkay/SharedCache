@@ -23,6 +23,8 @@ public class Irc {
 	Frame 			frame;
 	JvnObject       sentence;
 	Sentence        sentenceProxy;  // Add proxy field
+	JvnServerImpl   server;  // Store server reference
+	Thread          shutdownHook;  // Store shutdown hook reference so we can remove it
 
 
   /**
@@ -40,14 +42,14 @@ public class Irc {
 		JvnObject jo = js.jvnLookupObject("IRC");
 		   
 		if (jo == null) {
-			System.out.println("Creating object...");
+			System.out.println("[IRC] Creating object...");
 			jo = js.jvnCreateObject((Serializable) new SentenceImpl());
 			// after creation, I have a write lock on the object
 			jo.jvnUnLock();
 			js.jvnRegisterObject("IRC", jo);
 		}
 		// create the graphical part of the Chat application
-		 new Irc(jo);
+		 new Irc(jo, js);
 	   
 	   } catch (Exception e) {
 		   System.out.println("IRC problem : " + e.getMessage());
@@ -57,15 +59,48 @@ public class Irc {
   /**
    * IRC Constructor
    @param jo the JVN object representing the Chat
+   @param js the JVN server instance
    **/
-	public Irc(JvnObject jo) throws JvnException {
+	public Irc(JvnObject jo, JvnServerImpl js) throws JvnException {
 
 		sentence = jo;
+		server = js;
 		// Create proxy for automatic locking
 		sentenceProxy = (Sentence) JvnHandler.newInstance(jo);
 		System.out.println("Object received : " + jo);
+		
+		// Add shutdown hook for CTRL-C (simulated crash)
+		shutdownHook = new Thread(() -> {
+			System.out.println("[IRC] Shutdown hook triggered (CTRL-C or kill signal)");
+			try {
+				server.jvnTerminate();
+				System.out.println("[IRC] Server terminated successfully");
+			} catch (Exception e) {
+				System.err.println("[IRC] Error during shutdown: " + e.getMessage());
+			}
+		});
+		Runtime.getRuntime().addShutdownHook(shutdownHook);
+		
 		frame=new Frame();
 		frame.setLayout(new GridLayout(1,1));
+		
+		// Add window listener for GUI close
+		frame.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				System.out.println("[IRC] Window closing, terminating server...");
+				try {
+					// Remove shutdown hook to prevent double termination
+					Runtime.getRuntime().removeShutdownHook(shutdownHook);
+					server.jvnTerminate();
+					System.out.println("[IRC] Server terminated successfully");
+				} catch (Exception ex) {
+					System.err.println("[IRC] Error during termination: " + ex.getMessage());
+				}
+				System.exit(0);
+			}
+		});
+		
 		text=new TextArea(10,60);
 		text.setEditable(false);
 		text.setForeground(Color.red);
