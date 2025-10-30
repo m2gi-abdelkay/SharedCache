@@ -82,7 +82,7 @@ public class Irc {
 		Runtime.getRuntime().addShutdownHook(shutdownHook);
 		
 		frame=new Frame();
-		frame.setLayout(new GridLayout(1,1));
+		frame.setLayout(new BorderLayout(10,10));
 		
 		// Add window listener for GUI close
 		frame.addWindowListener(new WindowAdapter() {
@@ -163,7 +163,7 @@ public class Irc {
 		System.out.println("s is :" + s);
 		
 		// display the read value
-		irc.data.setText(s);
+		//irc.data.setText(s);
 		irc.text.append(s+"\n");
 	   } catch (Exception ex) {
 		   System.out.println("IRC problem : " + ex.getMessage());
