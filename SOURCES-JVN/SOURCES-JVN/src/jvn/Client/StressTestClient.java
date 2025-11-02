@@ -6,6 +6,8 @@ import jvn.Server.JvnServerImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.Serializable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -13,10 +15,14 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.Scanner;
 
 public class StressTestClient {
-
+    //private static final String LOG_FILE = "StressTestClientLogs.txt";
 
     public static void main(String[] args) {
-        try (Scanner scanner = new Scanner(System.in)){
+        Scanner scanner = new Scanner(System.in);
+            
+        try /*(BufferedWriter logger = new BufferedWriter(new FileWriter(LOG_FILE, true)))*/{
+
+
             // Prompt user for the number of clients and operations
             System.out.print("Enter the number of concurrent clients: ");
             int numClients = scanner.nextInt();
@@ -47,17 +53,25 @@ public class StressTestClient {
                 executor.submit(() -> {
                     for (int j = 0; j < numClients; j++) {
                         try {
+                            //String logMessage;
                             // Randomly decide to read or write
                             if (ThreadLocalRandom.current().nextBoolean()) {
                                 // Perform a read operation
                                 String value = sentenceProxy.read();
+                                //logMessage = "Read value: " + value;
                                 System.out.println("[StressTestClient] Read value: " + value);
                             } else {
                                 // Perform a write operation
                                 String newValue = "Message-" + ThreadLocalRandom.current().nextInt(1000);
                                 sentenceProxy.write(newValue);
+                                //logMessage = "Wrote value: " + newValue;
                                 System.out.println("[StressTestClient] Wrote value: " + newValue);
                             }
+
+                            /*synchronized (logger){
+                                logger.write(logMessage);
+                                logger.newLine();
+                            }*/
                         } catch (Exception e) {
                             System.err.println("[StressTestClient] Error during operation: " + e.getMessage());
                         }
@@ -71,6 +85,8 @@ public class StressTestClient {
                 Thread.sleep(100); // Wait for all tasks to complete
             }
 
+            //logger.flush();
+
             
             System.out.println("[StressTestClient] Stress test completed successfully.");
             System.exit(0);
@@ -78,6 +94,8 @@ public class StressTestClient {
             System.err.println("[StressTestClient] Error: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
+        } finally {
+            scanner.close();
         }
     }
 }
