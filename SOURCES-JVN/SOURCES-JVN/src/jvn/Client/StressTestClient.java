@@ -10,14 +10,20 @@ import java.io.Serializable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.Scanner;
 
 public class StressTestClient {
 
-    private static final int NUM_CLIENTS = 5; // Number of concurrent clients
-    private static final int NUM_OPERATIONS = 10; // Number of operations per client
 
     public static void main(String[] args) {
-        try {
+        try (Scanner scanner = new Scanner(System.in)){
+            // Prompt user for the number of clients and operations
+            System.out.print("Enter the number of concurrent clients: ");
+            int numClients = scanner.nextInt();
+
+            System.out.print("Enter the number of operations per client: ");
+            int numOperations = scanner.nextInt();
+            
             // Initialize JVN server
             JvnServerImpl server = JvnServerImpl.jvnGetServer();
 
@@ -34,26 +40,26 @@ public class StressTestClient {
             Sentence sentenceProxy = (Sentence) JvnHandler.newInstance(sharedObject);
 
             // Create a thread pool to simulate concurrent clients
-            ExecutorService executor = Executors.newFixedThreadPool(NUM_CLIENTS);
+            ExecutorService executor = Executors.newFixedThreadPool(numClients);
 
             // Submit tasks for each client
-            for (int i = 0; i < NUM_CLIENTS; i++) {
+            for (int i = 0; i < numClients; i++) {
                 executor.submit(() -> {
-                    for (int j = 0; j < NUM_OPERATIONS; j++) {
+                    for (int j = 0; j < numClients; j++) {
                         try {
                             // Randomly decide to read or write
                             if (ThreadLocalRandom.current().nextBoolean()) {
                                 // Perform a read operation
                                 String value = sentenceProxy.read();
-                                System.out.println("[Client] Read value: " + value);
+                                System.out.println("[StressTestClient] Read value: " + value);
                             } else {
                                 // Perform a write operation
                                 String newValue = "Message-" + ThreadLocalRandom.current().nextInt(1000);
                                 sentenceProxy.write(newValue);
-                                System.out.println("[Client] Wrote value: " + newValue);
+                                System.out.println("[StressTestClient] Wrote value: " + newValue);
                             }
                         } catch (Exception e) {
-                            System.err.println("[Client] Error during operation: " + e.getMessage());
+                            System.err.println("[StressTestClient] Error during operation: " + e.getMessage());
                         }
                     }
                 });
