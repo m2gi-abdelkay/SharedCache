@@ -172,4 +172,17 @@ public class JvnObjectImpl implements JvnObject{
         return obj;
     } 
 
+@Override
+public String toString() {
+    return "JvnObjectImpl{" +
+           "id=" + id +
+           ", name='" + name + '\'' +
+           ", state=" + state +
+           ", obj=" + obj +
+           '}';
+}
+
+
+
+
 }

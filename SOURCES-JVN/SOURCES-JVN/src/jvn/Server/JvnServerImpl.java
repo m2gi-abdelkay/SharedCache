@@ -22,6 +22,9 @@ import jvn.Utils.JvnLocalServer;
 import jvn.Utils.JvnObject;
 import jvn.Utils.JvnRemoteCoord;
 import jvn.Utils.JvnRemoteServer;
+import java.util.Iterator;
+
+
 
 
 
@@ -38,6 +41,31 @@ public class JvnServerImpl
 	private final JvnRemoteCoord javanaiseCoord;
 	private Map<Integer, JvnObject> objCache;
 
+	private static final int MAX_CACHE_SIZE = 10;
+
+	
+private void flusherCache() {
+    System.out.println("[########### JvnServerImpl ############] flushing oldest objects...");
+
+    Iterator<Map.Entry<Integer, JvnObject>> it = objCache.entrySet().iterator();
+    int flushed = 0;
+    int maxFlush = 2; // removing the 5 fist elements in the cache
+
+    while (it.hasNext() && flushed < maxFlush) {
+        Map.Entry<Integer, JvnObject> entry = it.next();
+        int objectId = entry.getKey();
+
+        it.remove();
+        flushed++;
+
+        System.out.println("[JvnServerImpl] Flushed object ID: " + objectId);
+    }
+
+        System.out.println("[JvnServerImpl] Flushed " + flushed + " objects from cache.");
+    
+}
+
+
 
   /**
   * Default constructor
@@ -52,6 +80,19 @@ public class JvnServerImpl
 		this.objCache = new HashMap<>();
 
 	}
+
+
+	// private void displayCache() {
+	// 	System.out.println("=== ==========Contenu du cache==================== ===");
+	// 	if (objCache.isEmpty()) {
+	// 		System.out.println("Le cache est vide.");
+	// 	} else {
+	// 		objCache.forEach((oid, jo) -> System.out.println(jo));
+
+	// 	}
+	// 	System.out.println("=======================");
+	// }
+
 	
   /**
     * Static method allowing an application to get a reference to 
@@ -118,6 +159,13 @@ public class JvnServerImpl
 	throws jvn.Utils.JvnException {
 		this.objCache.put(jo.jvnGetObjectId(), jo);
 
+		System.out.println("C####### dans jvnregister ##############");
+		if (objCache.size() > MAX_CACHE_SIZE) {
+			flusherCache();
+		}
+
+		///displayCache();
+
 		try {
 			javanaiseCoord.jvnRegisterObject(jon, jo, this);
 		} catch (RemoteException e) {
@@ -127,7 +175,7 @@ public class JvnServerImpl
 		{
 			System.out.println("Caught error in registration!");
 		}
-		
+
 	}
 	
 	/**
@@ -143,6 +191,14 @@ public class JvnServerImpl
 			JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
 			JvnObjectImpl localJo = new JvnObjectImpl(jo.jvnGetSharedObject(),jo.jvnGetObjectId(),"");
 			this.objCache.put(localJo.jvnGetObjectId(), localJo);
+
+			if (objCache.size() > MAX_CACHE_SIZE) {
+				flusherCache();
+			}
+			
+			//displayCache();
+
+
 			return localJo;
 		} catch (RemoteException e) {
 			System.err.println("remote exception caught");
