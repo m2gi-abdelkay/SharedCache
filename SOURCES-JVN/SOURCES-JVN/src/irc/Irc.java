@@ -33,20 +33,24 @@ public class Irc {
   **/
 	public static void main(String argv[]) {
 	   try {
-		   
+		   // Determine object name from args (default "IRC")
+		   String objName = "IRC";
+		   if (argv != null && argv.length > 0 && argv[0] != null && argv[0].length() > 0) {
+			objName = argv[0];
+		   }
+
 		// initialize JVN
 		JvnServerImpl js = JvnServerImpl.jvnGetServer();
-		//System.out.println("js is :" + js);
-		// look up the IRC object in the JVN server
+		// look up the object in the JVN server
 		// if not found, create it, and register it in the JVN server
-		JvnObject jo = js.jvnLookupObject("IRC");
+		JvnObject jo = js.jvnLookupObject(objName);
 		   
 		if (jo == null) {
 			System.out.println("[IRC] Creating object...");
-			jo = js.jvnCreateObject((Serializable) new SentenceImpl());
-			// after creation, I have a write lock on the object
-			jo.jvnUnLock();
-			js.jvnRegisterObject("IRC", jo);
+				jo = js.jvnCreateObject((Serializable) new SentenceImpl());
+				// after creation, I have a write lock on the object
+				jo.jvnUnLock();
+				js.jvnRegisterObject(objName, jo);
 		}
 		// create the graphical part of the Chat application
 		 new Irc(jo, js);
