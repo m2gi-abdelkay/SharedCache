@@ -15,6 +15,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import jvn.JvnObject.JvnObjectImpl;
 import jvn.Utils.JvnException;
@@ -22,7 +23,6 @@ import jvn.Utils.JvnLocalServer;
 import jvn.Utils.JvnObject;
 import jvn.Utils.JvnRemoteCoord;
 import jvn.Utils.JvnRemoteServer;
-import java.util.Iterator;
 
 
 
@@ -38,8 +38,9 @@ public class JvnServerImpl
 	private static final long serialVersionUID = 1L;
 	// A JVN server is managed as a singleton  
 	private static JvnServerImpl js = null;
-	private final JvnRemoteCoord javanaiseCoord;
+	private JvnRemoteCoord javanaiseCoord;
 	private Map<Integer, JvnObject> objCache;
+	private long cachedCoordinatorEpoch = -1; // Track coordinator epoch to detect restarts
 
 	private static final int MAX_CACHE_SIZE = 10;
 
@@ -79,6 +80,45 @@ private void flusherCache() {
 
 		this.objCache = new HashMap<>();
 
+	}
+
+	// Try to re-resolve coordinator stub if RemoteException occurs
+	private synchronized void ensureCoordConnected() {
+		try {
+			Registry registry = LocateRegistry.getRegistry();
+			JvnRemoteCoord coord = (JvnRemoteCoord) registry.lookup("Javanaise");
+			this.javanaiseCoord = coord;
+		} catch (Exception e) {
+			System.err.println("[JvnServerImpl] Failed to reconnect to coordinator: " + e.getMessage());
+		}
+	}
+	
+	/**
+	 * Check if coordinator has restarted by comparing epochs.
+	 * If coordinator restarted, invalidate all local locks.
+	 */
+	private synchronized void checkCoordinatorEpoch() {
+		try {
+			long currentEpoch = javanaiseCoord.getCoordinatorEpoch();
+			if (cachedCoordinatorEpoch != -1 && currentEpoch != cachedCoordinatorEpoch) {
+				System.out.println("[JvnServerImpl] Coordinator restart detected! Old epoch=" + cachedCoordinatorEpoch + ", new epoch=" + currentEpoch);
+				System.out.println("[JvnServerImpl] Invalidating all local locks in cache...");
+				// Coordinator restarted - invalidate all local lock states
+				for (JvnObject jo : objCache.values()) {
+					try {
+						// Force objects back to NL (No Lock) state regardless of current state
+						if (jo != null) {
+							((JvnObjectImpl) jo).resetState(); // Handles all states including write locks
+						}
+					} catch (Exception e) {
+						// Ignore errors during invalidation
+					}
+				}
+			}
+			cachedCoordinatorEpoch = currentEpoch;
+		} catch (RemoteException e) {
+			System.err.println("[JvnServerImpl] Failed to check coordinator epoch: " + e.getMessage());
+		}
 	}
 
 
@@ -127,8 +167,15 @@ private void flusherCache() {
 		} catch (JvnException e){
 			System.err.println(e.getMessage());
 		} catch (RemoteException ex) {
-			System.out.println("Erreuir in remote exception in jvnTerminate");
-            }
+			System.err.println("[JvnServerImpl] Remote exception in jvnTerminate: " + ex.getMessage());
+			// Try to reconnect and retry once
+			ensureCoordConnected();
+			try {
+				javanaiseCoord.jvnTerminate(this);
+			} catch (Exception e) {
+				System.err.println("[JvnServerImpl] Failed to terminate on coordinator (retry failed)");
+			}
+        }
 	} 
 	
 	/**
@@ -144,7 +191,16 @@ private void flusherCache() {
 			javanaiseCoord.jvnLockWrite(oid, this);
 			return new JvnObjectImpl(o, oid, "WRITE");
 		} catch (RemoteException e) {
-			throw new JvnException("Failed to create object due to remote exception");
+			System.err.println("[JvnServerImpl] Remote exception in jvnCreateObject: " + e.getMessage());
+			// Try to reconnect and retry once
+			ensureCoordConnected();
+			try {
+				int oid = javanaiseCoord.jvnGetObjectId();
+				javanaiseCoord.jvnLockWrite(oid, this);
+				return new JvnObjectImpl(o, oid, "WRITE");
+			} catch (Exception ex) {
+				throw new JvnException("Failed to create object due to remote exception (retry failed)");
+			}
 		}
 	}
 	
@@ -169,7 +225,14 @@ private void flusherCache() {
 		try {
 			javanaiseCoord.jvnRegisterObject(jon, jo, this);
 		} catch (RemoteException e) {
-			System.out.println("Caught remite exception");
+			System.err.println("[JvnServerImpl] Remote exception in jvnRegisterObject: " + e.getMessage());
+			// Try to reconnect and retry once
+			ensureCoordConnected();
+			try {
+				javanaiseCoord.jvnRegisterObject(jon, jo, this);
+			} catch (Exception ex) {
+				throw new JvnException("Failed to register object due to remote exception (retry failed)");
+			}
 		}
 		catch (JvnException e)
 		{
@@ -187,6 +250,9 @@ private void flusherCache() {
 	@Override
 	public  JvnObject jvnLookupObject(String jon)
 	throws jvn.Utils.JvnException {
+		// Check if coordinator restarted
+		checkCoordinatorEpoch();
+		
 		try {
 			JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
 			JvnObjectImpl localJo = new JvnObjectImpl(jo.jvnGetSharedObject(),jo.jvnGetObjectId(),"");
@@ -201,8 +267,21 @@ private void flusherCache() {
 
 			return localJo;
 		} catch (RemoteException e) {
-			System.err.println("remote exception caught");
-			return null;
+			System.err.println("[JvnServerImpl] Remote exception in jvnLookupObject: " + e.getMessage());
+			// Try to reconnect and retry once
+			ensureCoordConnected();
+			try {
+				JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
+				JvnObjectImpl localJo = new JvnObjectImpl(jo.jvnGetSharedObject(),jo.jvnGetObjectId(),"");
+				this.objCache.put(localJo.jvnGetObjectId(), localJo);
+				if (objCache.size() > MAX_CACHE_SIZE) {
+					flusherCache();
+				}
+				return localJo;
+			} catch (Exception ex) {
+				System.err.println("[JvnServerImpl] Remote exception on retry: " + ex.getMessage());
+				return null;
+			}
 		}
 		catch (JvnException e)
 		{
@@ -223,13 +302,26 @@ private void flusherCache() {
 	@Override
    public Serializable jvnLockRead(int joi)
 	 throws JvnException {
+		// Check if coordinator restarted before acquiring lock
+	   ensureCoordConnected();
+	   checkCoordinatorEpoch();
+	   
 	   try {
 						 Serializable state = javanaiseCoord.jvnLockRead(joi, this);
 						 System.out.println("[JvnServerImpl] jvnLockRead returned for joi=" + joi + " objId=" + System.identityHashCode(state) + " state=" + state.getClass().getName());
 						 return state;
 	   } catch (RemoteException e) {
-		   System.err.println("Remote exception erreur caught");
-		   return null;
+		   System.err.println("Remote exception error caught: " + e.getMessage());
+		   // Try to re-resolve coordinator and retry once
+		   ensureCoordConnected();
+		   try {
+			   Serializable state = javanaiseCoord.jvnLockRead(joi, this);
+			   System.out.println("[JvnServerImpl] (retry) jvnLockRead returned for joi=" + joi + " objId=" + System.identityHashCode(state));
+			   return state;
+		   } catch (Exception ex) {
+			   System.err.println("Remote exception on retry: " + ex.getMessage());
+			   return null;
+		   }
 	   }
 		// to be completed 
 		// return null;
@@ -244,13 +336,26 @@ private void flusherCache() {
 	@Override
    public Serializable jvnLockWrite(int joi)
 	 throws JvnException {
+	   // Check if coordinator restarted before acquiring lock
+	   ensureCoordConnected();
+	   checkCoordinatorEpoch();
+	   
 	   try {
 						 Serializable state = javanaiseCoord.jvnLockWrite(joi, this);
 						 System.out.println("[JvnServerImpl] jvnLockWrite returned for joi=" + joi + " objId=" + System.identityHashCode(state) + " state=" + state.getClass().getName());
 						 return state;
 	   } catch (RemoteException e) {
-		   System.err.println("Remote exception erreur caught");
-		   return null;
+		   System.err.println("Remote exception error caught: " + e.getMessage());
+		   // Try to re-resolve coordinator and retry once
+		   ensureCoordConnected();
+		   try {
+			   Serializable state = javanaiseCoord.jvnLockWrite(joi, this);
+			   System.out.println("[JvnServerImpl] (retry) jvnLockWrite returned for joi=" + joi + " objId=" + System.identityHashCode(state));
+			   return state;
+		   } catch (Exception ex) {
+			   System.err.println("Remote exception on retry: " + ex.getMessage());
+			   return null;
+		   }
 	   }
 		// to be completed 
 		// return null;
@@ -277,12 +382,13 @@ private void flusherCache() {
 	* @return the current JVN object state
 	* @throws java.rmi.RemoteException,JvnException
 	**/
-  public Serializable jvnInvalidateWriter(int joi)
+	@Override
+	public Serializable jvnInvalidateWriter(int joi)
 	throws java.rmi.RemoteException,jvn.Utils.JvnException { 
 		// to be completed
-	  	return this.objCache.get(joi).jvnInvalidateWriter();
-	};
-	
+		return this.objCache.get(joi).jvnInvalidateWriter();
+	}
+
 	/**
 	* Reduce the Write lock of the JVN object identified by id 
 	* @param joi : the JVN object id
@@ -309,6 +415,22 @@ public boolean equals(Object obj) {
     // Add comparison logic for fields if necessary
     return true; // Adjust based on fields to compare
 }
+
+
+
+	@Override
+	public void resetObjectState() throws RemoteException, JvnException {
+		for (JvnObject jo : objCache.values()) {
+			try {
+				// Force objects back to NL (No Lock) state regardless of current state
+				if (jo != null) {
+					((JvnObjectImpl) jo).resetState(); // Handles all states including write locks
+				}
+			} catch (Exception e) {
+				// Ignore errors during invalidation
+			}
+		}
+	}
 
 }
 

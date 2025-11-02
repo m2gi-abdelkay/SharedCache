@@ -9,7 +9,7 @@
 
 package jvn.Coordinator;
 
-import java.io.Serializable;
+import java.io.*;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashSet;
@@ -27,6 +27,7 @@ public class JvnCoordImpl
   private static final int LOCK_READ =  0;
   private static final int LOCK_WRITE = 1;
   private static int start_id = 1;
+  private long coordinatorEpoch = 0; // Incremented on each coordinator restart
   private ConcurrentHashMap<String,JvnObject> registrationMap;
   private ConcurrentHashMap<Integer, Serializable> objectIdsMap;
   private ConcurrentHashMap<Integer,Integer> lockHashMap;
@@ -48,10 +49,21 @@ public class JvnCoordImpl
   **/
 	JvnCoordImpl() throws Exception {
 		registrationMap = new ConcurrentHashMap<>();
-    lockHashMap = new ConcurrentHashMap<>();
-    serverHashMap = new ConcurrentHashMap<>();
-    objectIdsMap = new ConcurrentHashMap<>();
-    objectLocks = new ConcurrentHashMap<>();
+  lockHashMap = new ConcurrentHashMap<>();
+  serverHashMap = new ConcurrentHashMap<>();
+  objectIdsMap = new ConcurrentHashMap<>();
+  objectLocks = new ConcurrentHashMap<>();
+
+  // Try to load persisted coordinator state (if any)
+  try {
+    loadState();
+  } catch (Exception e) {
+    System.out.println("[JvnCoordinator] No previous state to load or failed to load: " + e.getMessage());
+  }
+  
+  // Increment epoch on each startup so servers can detect restart
+  coordinatorEpoch++;
+  System.out.println("[JvnCoordinator] Coordinator epoch: " + coordinatorEpoch);
 	}
 
   /**
@@ -127,7 +139,7 @@ public class JvnCoordImpl
       // For the same joi, check whether someone has a lock on it or not
       // if not, then assign joi -> READ_LOCK and joi -> jvnRemoteServer to know which server to call eventually for the invalidation
 
-      if(!lockHashMap.containsKey(joi))
+  if(!lockHashMap.containsKey(joi))
       {
         System.out.println("[JvnCoordinator] No other server has acquired a lock on object: " + joi + ", granting READ lock...");
         //This means no other server has a read or write lock on the object. 
@@ -139,14 +151,14 @@ public class JvnCoordImpl
         return objectIdsMap.get(joi);
       }
 
-      if(lockHashMap.containsKey(joi))
+  if(lockHashMap.containsKey(joi))
       {
         System.out.println("[JvnCoordinator] Object with id :" + joi + " already has a lock assigned to it. Determining type of lock...");
         //This means that a/many server(s) has/have a lock on our shared object. We retrieve the list of servers and the type of the lock:
         int lock_type = lockHashMap.get(joi);
         HashSet<JvnRemoteServer> serverArray = serverHashMap.get(joi);
         //Determine type of lock:
-        if(lock_type == LOCK_READ)
+            if(lock_type == LOCK_READ)
         {
           System.out.println("[JvnCoordinator] Object with id :" + joi + " has a READ lock assigned to it.");
           // This means that one (or many) servers have a read lock on the object
@@ -168,7 +180,7 @@ public class JvnCoordImpl
           return objectIdsMap.get(joi);
 
         }
-        if(lock_type == LOCK_WRITE){
+          if(lock_type == LOCK_WRITE){
           System.out.println("[JvnCoordinator] Object with id :" + joi + " has a WRITE lock assigned to it.");
           System.out.println("[JvnCoordinator] Checking whether it is the same server....");
 
@@ -185,7 +197,7 @@ public class JvnCoordImpl
 
           System.out.println("[JvnCoordinator] Check completed, another server has the lock.");
           //If the write lock is in another server (cf cohérence cas de figure 6):
-          if(!serverArray.contains(js))
+            if(!serverArray.contains(js))
           {
             System.out.println("[JvnCoordinator] Must invalidate other server...");
             //Then we must invalidate, get the server which has the lock:
@@ -381,7 +393,72 @@ public class JvnCoordImpl
         
     }
 
-  
+    /**
+     * Persist coordinator state to disk so it can be recovered after a crash.
+     * NOTE: We do NOT persist lockHashMap or serverHashMap because:
+     * - lockHashMap would be stale (servers may have crashed/restarted)
+     * - serverHashMap contains RMI stubs which are not serializable and invalid after restart
+     * After coordinator restart, all locks are cleared and servers must re-acquire them.
+     * We persist coordinatorEpoch so it increments across restarts.
+     */
+    public synchronized void saveState() {
+        File f = new File("jvn_coord_state.ser");
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(f))) {
+            CoordinatorState state = new CoordinatorState();
+            state.startId = start_id;
+            state.coordinatorEpoch = coordinatorEpoch;
+            state.objectIdsMap = new ConcurrentHashMap<>(this.objectIdsMap);
+            state.registrationMap = new ConcurrentHashMap<>(this.registrationMap);
+            oos.writeObject(state);
+            System.out.println("[JvnCoordinator] State saved to " + f.getAbsolutePath() + " (epoch=" + coordinatorEpoch + ")");
+        } catch (IOException e) {
+            System.err.println("[JvnCoordinator] Failed to save state: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Load coordinator state from disk if available.
+     * Locks are cleared on restart - servers must re-acquire them.
+     */
+    public synchronized void loadState() throws IOException, ClassNotFoundException {
+        File f = new File("jvn_coord_state.ser");
+        if (!f.exists()) return;
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
+            CoordinatorState state = (CoordinatorState) ois.readObject();
+            if (state != null) {
+                start_id = state.startId;
+                coordinatorEpoch = state.coordinatorEpoch;
+                if (state.objectIdsMap != null) this.objectIdsMap.putAll(state.objectIdsMap);
+                if (state.registrationMap != null) this.registrationMap.putAll(state.registrationMap);
+                // Clear locks - servers must re-acquire after coordinator restart
+                this.lockHashMap.clear();
+                this.serverHashMap.clear();
+                System.out.println("[JvnCoordinator] State loaded from " + f.getAbsolutePath() + " (epoch=" + coordinatorEpoch + ") - all locks cleared");
+            }
+        }
+    }
+    
+    /**
+     * Get the current coordinator epoch. Servers use this to detect coordinator restarts.
+     * @return current epoch number
+     */
+    @Override
+    public synchronized long getCoordinatorEpoch() throws RemoteException {
+      return coordinatorEpoch;
+    }
+
+    public void informServers() throws RemoteException, JvnException
+    {
+      //To be implemented!
+    }
+
+    private static class CoordinatorState implements Serializable {
+        private static final long serialVersionUID = 1L;
+        int startId;
+        long coordinatorEpoch;
+        ConcurrentHashMap<Integer, Serializable> objectIdsMap;
+        ConcurrentHashMap<String, JvnObject> registrationMap;
+    }  
 }
 
  

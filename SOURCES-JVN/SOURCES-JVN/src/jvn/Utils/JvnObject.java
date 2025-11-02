@@ -33,6 +33,7 @@ public interface JvnObject extends Serializable {
      	throws jvn.Utils.JvnException; 
 
 	/**
+	 * 
 	* Unlock  the object 
 	* @throws JvnException
 	**/
@@ -40,6 +41,7 @@ public interface JvnObject extends Serializable {
 	throws jvn.Utils.JvnException; 
 	
 	
+	public void resetState();
 	/**
 	* Get the object identification
 	* @throws JvnException

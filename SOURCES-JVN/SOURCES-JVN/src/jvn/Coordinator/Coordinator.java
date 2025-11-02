@@ -3,6 +3,8 @@ package jvn.Coordinator;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
+
+//TODO: Coordinator sends to servers message that he is going to crash
 public class Coordinator {
     public static void main(String[] args) throws Exception {
         System.out.println("Hello from Coordinator!");
@@ -27,6 +29,17 @@ public class Coordinator {
 
         System.out.println("Coordinator ready!");
         
+        // Add shutdown hook to persist coordinator state on exit/crash
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("[Coordinator] Shutdown hook triggered, saving state...");
+            try {
+                jvnCoordImpl.saveState();
+                jvnCoordImpl.informServers();
+            } catch (Exception e) {
+                System.err.println("[Coordinator] Error saving state: " + e.getMessage());
+            }
+        }));
+
         // Keep the coordinator running
         System.out.println("Coordinator is running... Press Ctrl+C to stop.");
     }

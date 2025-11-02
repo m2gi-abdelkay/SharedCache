@@ -75,6 +75,15 @@ public interface JvnRemoteCoord extends Remote {
   public void jvnTerminate(JvnRemoteServer js)
 	 throws java.rmi.RemoteException, JvnException;
 
+	/**
+	* Get the current coordinator epoch number (incremented on each restart)
+	* Servers use this to detect coordinator restarts and invalidate local locks
+	* @return the current epoch number
+	* @throws java.rmi.RemoteException
+	**/
+  public long getCoordinatorEpoch()
+	 throws java.rmi.RemoteException;
+
  }
 
 

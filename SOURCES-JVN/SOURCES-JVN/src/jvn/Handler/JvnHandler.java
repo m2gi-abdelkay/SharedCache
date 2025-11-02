@@ -11,9 +11,15 @@ import jvn.Utils.JvnObject;
 public class JvnHandler implements InvocationHandler {
 
     private JvnObject jo;
+    private Class<?> implementationClass; // Cache the implementation class for annotation lookup
 
-    public JvnHandler(JvnObject jo){
+    public JvnHandler(JvnObject jo) throws JvnException {
         this.jo = jo;
+        // Cache the implementation class so we can check annotations even if obj becomes null
+        Serializable obj = jo.jvnGetSharedObject();
+        if (obj != null) {
+            this.implementationClass = obj.getClass();
+        }
     }
 
 
@@ -33,26 +39,26 @@ public class JvnHandler implements InvocationHandler {
         
         boolean lockAcquired = false;
         System.out.println("[JvnHandler] I'm here!");
-        Object target = jo.jvnGetSharedObject();
 
         try {
-            // locate implementation method on the real target class
-            Method implMethod = null;
-            try {
-                implMethod = target.getClass().getMethod(method.getName(), method.getParameterTypes());
-            } catch (NoSuchMethodException nsme) {
-                System.out.println("No impl method found");
-                // no impl method found; that's fine, we'll invoke via interface method
+            // Check annotations on the interface method first
+            boolean readAnnotated = method.isAnnotationPresent(ReadLock.class);
+            boolean writeAnnotated = method.isAnnotationPresent(WriteLock.class);
+            
+            // If not on interface, check the cached implementation class (works even if obj is null)
+            if (!readAnnotated && !writeAnnotated && implementationClass != null) {
+                try {
+                    Method implMethod = implementationClass.getMethod(method.getName(), method.getParameterTypes());
+                    readAnnotated = implMethod.isAnnotationPresent(ReadLock.class);
+                    writeAnnotated = implMethod.isAnnotationPresent(WriteLock.class);
+                } catch (NoSuchMethodException nsme) {
+                    System.out.println("[JvnHandler] No impl method found in cached class");
+                }
             }
 
-            // check annotations on interface method first, then on implementation
-            boolean readAnnotated = method.isAnnotationPresent(ReadLock.class)
-                    || (implMethod != null && implMethod.isAnnotationPresent(ReadLock.class));
-            boolean writeAnnotated = method.isAnnotationPresent(WriteLock.class)
-                    || (implMethod != null && implMethod.isAnnotationPresent(WriteLock.class));
+            System.out.println("[JvnHandler] method=" + method.getName() + ", readAnn=" + readAnnotated + ", writeAnn=" + writeAnnotated);
 
-            System.out.println("[JvnHandler] method=" + method.getName() + ", readAnn=" + readAnnotated + ", writeAnn=" + writeAnnotated + ", implMethodPresent=" + (implMethod!=null));
-
+            // Acquire lock based on annotations
             if (readAnnotated) {
                 System.out.println("[JvnHandler] lock read");
                 jo.jvnLockRead();
@@ -65,18 +71,33 @@ public class JvnHandler implements InvocationHandler {
                 System.out.println("[JvnHandler] no lock annotation found");
             }
 
-            // invoke implementation method if available, otherwise invoke the interface method
+            // After lock acquisition, get the target object (should be updated by lock methods)
+            Object target = jo.jvnGetSharedObject();
+            if (target == null) {
+                jo.resetState();
+                throw new JvnException("Shared object is null after lock acquisition - coordinator may be down");
+            }
+
+            // Find the implementation method and invoke it
+            Method implMethod = null;
+            try {
+                implMethod = target.getClass().getMethod(method.getName(), method.getParameterTypes());
+            } catch (NoSuchMethodException nsme) {
+                // No implementation method found, will use interface method
+            }
+
             Object res;
             if (implMethod != null) {
                 System.out.println("[JvnHandler] Calling impl method!");
-                res = implMethod.invoke(jo.jvnGetSharedObject(), args); // <--- bug is here, for some reason when this method is invoked it does the old version
+                res = implMethod.invoke(target, args);
             } else {
-                res = method.invoke(jo.jvnGetSharedObject(), args);
+                res = method.invoke(target, args);
             }
 
             return res;
 
         } catch (Throwable e) {
+            System.err.println("[JvnHandler] Error during method invocation: " + e.getMessage());
             e.printStackTrace();
             throw e;
         } finally {
