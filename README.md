@@ -11,11 +11,10 @@ src/jvn:
 - Annotations: Directory for defined annotations
 - Utils: All interfaces + exception class + MyObject class (class we will use to initialize shared objects + add methods)
 Makefile: This will be used to compile the project. Run 'make help' to view list of commands, but essentially:
-1) Make compile
-2) Make setup
-3) Make run-coordinator
-4) Make run-irc NAME=#yourObjectName
-5) Make stop-registry
+1) Make setup
+2) Make run-coordinator
+3) Make run-irc NAME=#yourObjectName
+4) Make stop-registry
 
 To run the stress test:
 1) cd bin
