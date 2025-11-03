@@ -27,13 +27,17 @@ public class JvnCoordImpl
   private static final int LOCK_READ =  0;
   private static final int LOCK_WRITE = 1;
   private static int start_id = 1;
-  private long coordinatorEpoch = 0; // Incremented on each coordinator restart
+  //private long coordinatorEpoch = 0; // Incremented on each coordinator restart
   private ConcurrentHashMap<String,JvnObject> registrationMap;
   private ConcurrentHashMap<Integer, Serializable> objectIdsMap;
   private ConcurrentHashMap<Integer,Integer> lockHashMap;
   private ConcurrentHashMap<Integer, HashSet<JvnRemoteServer>> serverHashMap;
   // Map to store per-object locks for fine-grained synchronization
   private ConcurrentHashMap<Integer, Object> objectLocks;
+
+  // Use a concurrent Set to allow safe concurrent add/remove while iterating.
+  // ConcurrentHashMap.newKeySet() provides a thread-safe, weakly-consistent view.
+  private java.util.Set<JvnRemoteServer> listOfServers = ConcurrentHashMap.newKeySet();
 	
 
 
@@ -62,8 +66,8 @@ public class JvnCoordImpl
   }
   
   // Increment epoch on each startup so servers can detect restart
-  coordinatorEpoch++;
-  System.out.println("[JvnCoordinator] Coordinator epoch: " + coordinatorEpoch);
+  //coordinatorEpoch++;
+  //System.out.println("[JvnCoordinator] Coordinator epoch: " + coordinatorEpoch);
 	}
 
   /**
@@ -98,6 +102,7 @@ public class JvnCoordImpl
 
     System.out.println("[JvnCoordinator] About to register object :" + jon + " with id:" + jo.jvnGetObjectId());
     objectIdsMap.put(jo.jvnGetObjectId(), jo.jvnGetSharedObject());
+    listOfServers.add(js);
     registrationMap.put(jon, jo);
   }
   
@@ -116,6 +121,7 @@ public class JvnCoordImpl
       throw new JvnException("Object not found!");
     }
     System.out.println("[JvnCoordinator] Object :" + jon + " FOUND!");
+    listOfServers.add(js);
     return registrationMap.get(jon);
   }
   
@@ -406,11 +412,11 @@ public class JvnCoordImpl
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(f))) {
             CoordinatorState state = new CoordinatorState();
             state.startId = start_id;
-            state.coordinatorEpoch = coordinatorEpoch;
+            //state.coordinatorEpoch = coordinatorEpoch;
             state.objectIdsMap = new ConcurrentHashMap<>(this.objectIdsMap);
             state.registrationMap = new ConcurrentHashMap<>(this.registrationMap);
             oos.writeObject(state);
-            System.out.println("[JvnCoordinator] State saved to " + f.getAbsolutePath() + " (epoch=" + coordinatorEpoch + ")");
+            System.out.println("[JvnCoordinator] State saved to " + f.getAbsolutePath()); //+ " (epoch=" + coordinatorEpoch + ")");
         } catch (IOException e) {
             System.err.println("[JvnCoordinator] Failed to save state: " + e.getMessage());
         }
@@ -427,13 +433,13 @@ public class JvnCoordImpl
             CoordinatorState state = (CoordinatorState) ois.readObject();
             if (state != null) {
                 start_id = state.startId;
-                coordinatorEpoch = state.coordinatorEpoch;
+                //coordinatorEpoch = state.coordinatorEpoch;
                 if (state.objectIdsMap != null) this.objectIdsMap.putAll(state.objectIdsMap);
                 if (state.registrationMap != null) this.registrationMap.putAll(state.registrationMap);
                 // Clear locks - servers must re-acquire after coordinator restart
                 this.lockHashMap.clear();
                 this.serverHashMap.clear();
-                System.out.println("[JvnCoordinator] State loaded from " + f.getAbsolutePath() + " (epoch=" + coordinatorEpoch + ") - all locks cleared");
+                System.out.println("[JvnCoordinator] State loaded from " + f.getAbsolutePath() + " - all locks cleared");
             }
         }
     }
@@ -444,18 +450,46 @@ public class JvnCoordImpl
      */
     @Override
     public synchronized long getCoordinatorEpoch() throws RemoteException {
-      return coordinatorEpoch;
+      return 0;
     }
 
     public void informServers() throws RemoteException, JvnException
     {
-      //To be implemented!
+    // Iterate over the concurrent set. Use a small local collection to record
+    // servers that failed to respond and remove them afterwards to avoid
+    // modifying the set while iterating (even though the concurrent set
+    // tolerates it, removal during iteration can still produce surprising
+    // results). This also allows us to handle RemoteException/JvnException
+    // per-server without aborting the whole operation.
+    if(listOfServers.isEmpty())
+    {
+      System.out.println("[JvnCoordImpl] No servers were registered, exiting...");
+      return;
+    }
+
+    java.util.Set<JvnRemoteServer> toRemove = new java.util.HashSet<>();
+    for (JvnRemoteServer server : listOfServers) {
+      try {
+        System.out.println("[JvnCoordImpl] About to inform server :" + server);
+        server.resetObjectState();
+      } catch (RemoteException | JvnException e) {
+        System.err.println("[JvnCoordImpl] Failed to inform server " + server + ": " + e.getMessage());
+        // Mark the server for removal from our set of known servers
+        toRemove.add(server);
+      } catch (Exception e) {
+        System.err.println("[JvnCoordImpl] Unexpected error while informing server " + server + ": " + e.getMessage());
+        toRemove.add(server);
+      }
+    }
+    if (!toRemove.isEmpty()) {
+      listOfServers.removeAll(toRemove);
+    }
     }
 
     private static class CoordinatorState implements Serializable {
         private static final long serialVersionUID = 1L;
         int startId;
-        long coordinatorEpoch;
+        //long coordinatorEpoch;
         ConcurrentHashMap<Integer, Serializable> objectIdsMap;
         ConcurrentHashMap<String, JvnObject> registrationMap;
     }  

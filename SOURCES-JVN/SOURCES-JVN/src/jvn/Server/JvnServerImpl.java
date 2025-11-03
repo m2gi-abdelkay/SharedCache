@@ -97,6 +97,7 @@ private void flusherCache() {
 	 * Check if coordinator has restarted by comparing epochs.
 	 * If coordinator restarted, invalidate all local locks.
 	 */
+	/* 
 	private synchronized void checkCoordinatorEpoch() {
 		try {
 			long currentEpoch = javanaiseCoord.getCoordinatorEpoch();
@@ -120,6 +121,7 @@ private void flusherCache() {
 			System.err.println("[JvnServerImpl] Failed to check coordinator epoch: " + e.getMessage());
 		}
 	}
+	*/
 
 
 	// private void displayCache() {
@@ -251,7 +253,7 @@ private void flusherCache() {
 	public  JvnObject jvnLookupObject(String jon)
 	throws jvn.Utils.JvnException {
 		// Check if coordinator restarted
-		checkCoordinatorEpoch();
+		//checkCoordinatorEpoch();
 		
 		try {
 			JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
@@ -304,7 +306,7 @@ private void flusherCache() {
 	 throws JvnException {
 		// Check if coordinator restarted before acquiring lock
 	   ensureCoordConnected();
-	   checkCoordinatorEpoch();
+	   //checkCoordinatorEpoch();
 	   
 	   try {
 						 Serializable state = javanaiseCoord.jvnLockRead(joi, this);
@@ -338,7 +340,7 @@ private void flusherCache() {
 	 throws JvnException {
 	   // Check if coordinator restarted before acquiring lock
 	   ensureCoordConnected();
-	   checkCoordinatorEpoch();
+	   //checkCoordinatorEpoch();
 	   
 	   try {
 						 Serializable state = javanaiseCoord.jvnLockWrite(joi, this);
