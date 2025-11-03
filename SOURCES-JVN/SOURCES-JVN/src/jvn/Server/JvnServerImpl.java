@@ -41,30 +41,6 @@ public class JvnServerImpl
 	private final JvnRemoteCoord javanaiseCoord;
 	private Map<Integer, JvnObject> objCache;
 
-	private static final int MAX_CACHE_SIZE = 10;
-
-	
-private void flusherCache() {
-    System.out.println("[########### JvnServerImpl ############] flushing oldest objects...");
-
-    Iterator<Map.Entry<Integer, JvnObject>> it = objCache.entrySet().iterator();
-    int flushed = 0;
-    int maxFlush = 2; // removing the 5 fist elements in the cache
-
-    while (it.hasNext() && flushed < maxFlush) {
-        Map.Entry<Integer, JvnObject> entry = it.next();
-        int objectId = entry.getKey();
-
-        it.remove();
-        flushed++;
-
-        System.out.println("[JvnServerImpl] Flushed object ID: " + objectId);
-    }
-
-        System.out.println("[JvnServerImpl] Flushed " + flushed + " objects from cache.");
-    
-}
-
 
 
   /**
@@ -81,17 +57,6 @@ private void flusherCache() {
 
 	}
 
-
-	// private void displayCache() {
-	// 	System.out.println("=== ==========Contenu du cache==================== ===");
-	// 	if (objCache.isEmpty()) {
-	// 		System.out.println("Le cache est vide.");
-	// 	} else {
-	// 		objCache.forEach((oid, jo) -> System.out.println(jo));
-
-	// 	}
-	// 	System.out.println("=======================");
-	// }
 
 	
   /**
@@ -160,9 +125,7 @@ private void flusherCache() {
 		this.objCache.put(jo.jvnGetObjectId(), jo);
 
 		System.out.println("C####### dans jvnregister ##############");
-		if (objCache.size() > MAX_CACHE_SIZE) {
-			flusherCache();
-		}
+
 
 		///displayCache();
 
@@ -191,14 +154,6 @@ private void flusherCache() {
 			JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
 			JvnObjectImpl localJo = new JvnObjectImpl(jo.jvnGetSharedObject(),jo.jvnGetObjectId(),"");
 			this.objCache.put(localJo.jvnGetObjectId(), localJo);
-
-			if (objCache.size() > MAX_CACHE_SIZE) {
-				flusherCache();
-			}
-			
-			//displayCache();
-
-
 			return localJo;
 		} catch (RemoteException e) {
 			System.err.println("remote exception caught");
