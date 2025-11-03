@@ -30,9 +30,11 @@ public class JvnCoordImpl
   //private long coordinatorEpoch = 0; // Incremented on each coordinator restart
   private ConcurrentHashMap<String,JvnObject> registrationMap;
   private ConcurrentHashMap<Integer, Serializable> objectIdsMap;
-  private ConcurrentHashMap<Integer,Integer> lockHashMap;
+  //lockHashMap, associates an object Id to a lock (to know whether an object has a lock on it, and what type)
+  private ConcurrentHashMap<Integer, Integer> lockHashMap;
+  //serverHashMap, associates an object Id to the list of servers that potentially have a lock on the object
   private ConcurrentHashMap<Integer, HashSet<JvnRemoteServer>> serverHashMap;
-  // Map to store per-object locks for fine-grained synchronization
+  // objectLocks, associated an object Id to an object, that is used for 
   private ConcurrentHashMap<Integer, Object> objectLocks;
 
   // Use a concurrent Set to allow safe concurrent add/remove while iterating.
