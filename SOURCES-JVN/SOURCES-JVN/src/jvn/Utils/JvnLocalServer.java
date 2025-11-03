@@ -34,7 +34,7 @@ public interface JvnLocalServer {
 	* @param jo : the JVN object 
 	* @throws JvnException
 	**/
-	public  void jvnRegisterObject(String jon, JvnObject jo)
+	public  Integer jvnRegisterObject(String jon, JvnObject jo)
 	throws jvn.Utils.JvnException; 
 	
 	/**

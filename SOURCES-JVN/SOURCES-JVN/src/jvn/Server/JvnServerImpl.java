@@ -114,12 +114,12 @@ public class JvnServerImpl
 	* @throws JvnException
 	**/
         @Override
-	public  void jvnRegisterObject(String jon, JvnObject jo)
+	public  Integer jvnRegisterObject(String jon, JvnObject jo)
 	throws jvn.Utils.JvnException {
 		this.objCache.put(jo.jvnGetObjectId(), jo);
 
 		try {
-			javanaiseCoord.jvnRegisterObject(jon, jo, this);
+			return javanaiseCoord.jvnRegisterObject(jon, jo, this);
 		} catch (RemoteException e) {
 			System.out.println("Caught remite exception");
 		}
@@ -127,7 +127,7 @@ public class JvnServerImpl
 		{
 			System.out.println("Caught error in registration!");
 		}
-		
+		return 1;
 	}
 	
 	/**
