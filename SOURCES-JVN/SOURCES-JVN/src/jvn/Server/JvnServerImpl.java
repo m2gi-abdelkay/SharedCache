@@ -15,7 +15,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import jvn.JvnObject.JvnObjectImpl;
 import jvn.Utils.JvnException;
@@ -40,7 +39,6 @@ public class JvnServerImpl
 	private static JvnServerImpl js = null;
 	private JvnRemoteCoord javanaiseCoord;
 	private Map<Integer, JvnObject> objCache;
-	private long cachedCoordinatorEpoch = -1; // Track coordinator epoch to detect restarts
 
 
 
@@ -231,9 +229,6 @@ public class JvnServerImpl
 				JvnObject jo = javanaiseCoord.jvnLookupObject(jon, this);
 				JvnObjectImpl localJo = new JvnObjectImpl(jo.jvnGetSharedObject(),jo.jvnGetObjectId(),"");
 				this.objCache.put(localJo.jvnGetObjectId(), localJo);
-				if (objCache.size() > MAX_CACHE_SIZE) {
-					flusherCache();
-				}
 				return localJo;
 			} catch (Exception ex) {
 				System.err.println("[JvnServerImpl] Remote exception on retry: " + ex.getMessage());
