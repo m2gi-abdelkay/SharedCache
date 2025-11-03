@@ -94,18 +94,20 @@ public class JvnCoordImpl
   * @throws java.rmi.RemoteException,JvnException
   **/
   @Override
-  public synchronized void jvnRegisterObject(String jon, JvnObject jo, JvnRemoteServer js) throws RemoteException, JvnException {
+  public synchronized Integer jvnRegisterObject(String jon, JvnObject jo, JvnRemoteServer js) throws RemoteException, JvnException {
 
     if(registrationMap.containsKey(jon))
     {
       System.out.println("[JvnCoordinator] Cannot register already registered object!");
-      throw new JvnException(" Object name is already assigned to an object, please change object name.");
+      return 1; // exit not ok
+      //throw new JvnException(" Object name is already assigned to an object, please change object name.");
     }
 
     System.out.println("[JvnCoordinator] About to register object :" + jon + " with id:" + jo.jvnGetObjectId());
     objectIdsMap.put(jo.jvnGetObjectId(), jo.jvnGetSharedObject());
     listOfServers.add(js);
     registrationMap.put(jon, jo);
+    return 0; // exit ok
   }
   
   /**

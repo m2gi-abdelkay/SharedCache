@@ -176,7 +176,7 @@ public class JvnServerImpl
 	* @throws JvnException
 	**/
         @Override
-	public  void jvnRegisterObject(String jon, JvnObject jo)
+	public  Integer jvnRegisterObject(String jon, JvnObject jo)
 	throws jvn.Utils.JvnException {
 		this.objCache.put(jo.jvnGetObjectId(), jo);
 
@@ -186,7 +186,7 @@ public class JvnServerImpl
 		///displayCache();
 
 		try {
-			javanaiseCoord.jvnRegisterObject(jon, jo, this);
+			return javanaiseCoord.jvnRegisterObject(jon, jo, this);
 		} catch (RemoteException e) {
 			System.err.println("[JvnServerImpl] Remote exception in jvnRegisterObject: " + e.getMessage());
 			// Try to reconnect and retry once
