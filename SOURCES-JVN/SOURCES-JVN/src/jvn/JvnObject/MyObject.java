@@ -1,7 +1,6 @@
 package jvn.JvnObject;
 
 import java.io.Serializable;
-
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
 
@@ -83,4 +82,10 @@ public class MyObject implements JvnObject {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'jvnInvalidateWriterForReader'");
     }
+
+	@Override
+	public void resetState() {
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'resetState'");
+	}
 }

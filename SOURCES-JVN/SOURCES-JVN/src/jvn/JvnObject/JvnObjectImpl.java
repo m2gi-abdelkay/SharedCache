@@ -1,9 +1,8 @@
 
 package jvn.JvnObject; 
 
-import java.io.Serializable;
-
 import irc.SentenceImpl;
+import java.io.Serializable;
 import jvn.Server.JvnServerImpl;
 import jvn.Utils.JvnException;
 import jvn.Utils.JvnObject;
@@ -42,6 +41,10 @@ public class JvnObjectImpl implements JvnObject{
 
     @Override
     public Serializable jvnGetSharedObject() throws JvnException{
+        if (obj == null) {
+            System.out.println("[JvnObjectImpl] jvnGetSharedObject called for id=" + id + " but obj is NULL");
+            return null;
+        }
         System.out.println("[JvnObjectImpl] jvnGetSharedObject called for id=" + id + " objId=" + System.identityHashCode(obj) + " class=" + obj.getClass().getName());
         return obj;
     }
@@ -115,6 +118,16 @@ public class JvnObjectImpl implements JvnObject{
     }
 
 
+    /**
+     * Reset the object state to NL (No Lock) regardless of current state.
+     * Used when coordinator restarts and all locks must be cleared.
+     */
+    @Override
+    public synchronized void resetState() {
+        System.out.println("[JvnObjectImpl] Resetting state from " + state + " to NL for object id=" + id);
+        state = JvnSTATES.NL;
+    }
+
     @Override
     public synchronized void jvnInvalidateReader() throws JvnException{
         switch (state){
@@ -171,5 +184,18 @@ public class JvnObjectImpl implements JvnObject{
 
         return obj;
     } 
+
+@Override
+public String toString() {
+    return "JvnObjectImpl{" +
+           "id=" + id +
+           ", name='" + name + '\'' +
+           ", state=" + state +
+           ", obj=" + obj +
+           '}';
+}
+
+
+
 
 }

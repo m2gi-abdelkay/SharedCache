@@ -13,6 +13,10 @@ JAVA = java
 JAVAC_FLAGS = -d $(BIN_DIR) -cp $(SRC_DIR) -Xlint:unchecked
 RMIREGISTRY_PORT = 1099
 
+# Name of the shared object to create/look up when running the IRC app
+# Can be passed on the make command line: make run-irc NAME=MyObject
+NAME ?= IRC
+
 # Default target
 all: compile
 
@@ -64,7 +68,7 @@ run-client: compile
 # Run the IRC application
 run-irc: compile
 	@echo "Starting IRC Chat Application..."
-	cd $(BIN_DIR) && $(JAVA) irc.Irc
+	cd $(BIN_DIR) && $(JAVA) irc.Irc $(NAME)
 
 # Generate RMI stubs (if needed for older Java versions)
 generate-stubs: compile
