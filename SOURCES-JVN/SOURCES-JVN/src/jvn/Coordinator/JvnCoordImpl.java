@@ -27,11 +27,15 @@ public class JvnCoordImpl
   private static final int LOCK_READ =  0;
   private static final int LOCK_WRITE = 1;
   private static int start_id = 1;
-  private ConcurrentHashMap<String,JvnObject> registrationMap;
+  //Registration Map, stores associate object name (given by client) to the object itself
+  private ConcurrentHashMap<String, JvnObject> registrationMap;
+  //objectIdsMap, associates an id to its (raw) object
   private ConcurrentHashMap<Integer, Serializable> objectIdsMap;
-  private ConcurrentHashMap<Integer,Integer> lockHashMap;
+  //lockHashMap, associates an object Id to a lock (to know whether an object has a lock on it, and what type)
+  private ConcurrentHashMap<Integer, Integer> lockHashMap;
+  //serverHashMap, associates an object Id to the list of servers that potentially have a lock on the object
   private ConcurrentHashMap<Integer, HashSet<JvnRemoteServer>> serverHashMap;
-  // Map to store per-object locks for fine-grained synchronization
+  // objectLocks, associated an object Id to an object, that is used for 
   private ConcurrentHashMap<Integer, Object> objectLocks;
 	
 
