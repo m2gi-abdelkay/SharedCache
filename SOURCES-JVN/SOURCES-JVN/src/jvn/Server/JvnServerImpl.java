@@ -201,7 +201,7 @@ public class JvnServerImpl
 		{
 			System.out.println("Caught error in registration!");
 		}
-
+		return 1;
 	}
 	
 	/**
